@@ -1,17 +1,18 @@
 
 import { useState } from "react";
-import { Plus, BookOpen, Users, CreditCard, User, Search, Filter, MoreVertical } from "lucide-react";
+import { Plus, BookOpen, Users, CreditCard, User, Search, Filter, MoreVertical, LogOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import DashboardLayout from "@/components/DashboardLayout";
 import CourseModal from "@/components/CourseModal";
+import { useAuth } from "@/contexts/AuthContext";
 
 const Dashboard = () => {
   const [showCourseModal, setShowCourseModal] = useState(false);
+  const { user } = useAuth();
 
-  // Mock data for existing courses
   const courses = [
     {
       id: 1,
@@ -48,13 +49,6 @@ const Dashboard = () => {
     }
   ];
 
-  const stats = [
-    { label: "Total Courses", value: "12", icon: BookOpen, color: "text-blue-400" },
-    { label: "Active Students", value: "2,140", icon: Users, color: "text-green-400" },
-    { label: "Monthly Revenue", value: "$8,450", icon: CreditCard, color: "text-purple-400" },
-    { label: "Course Rating", value: "4.8", icon: User, color: "text-yellow-400" }
-  ];
-
   return (
     <DashboardLayout>
       <div className="p-6 space-y-6">
@@ -62,30 +56,19 @@ const Dashboard = () => {
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
           <div>
             <h1 className="text-3xl font-bold text-white">Dashboard</h1>
-            <p className="text-gray-400 mt-1">Manage your AI-generated courses</p>
+            <p className="text-gray-400 mt-1">
+              Welcome back, {user?.name}! Manage your AI-generated courses
+            </p>
           </div>
-          <Button 
-            onClick={() => setShowCourseModal(true)}
-            className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700"
-          >
-            <Plus className="w-4 h-4 mr-2" />
-            Create New Course
-          </Button>
-        </div>
-
-        {/* Stats Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          {stats.map((stat, index) => (
-            <Card key={index} className="bg-slate-800/50 border-slate-700">
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium text-gray-300">{stat.label}</CardTitle>
-                <stat.icon className={`h-4 w-4 ${stat.color}`} />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold text-white">{stat.value}</div>
-              </CardContent>
-            </Card>
-          ))}
+          <div className="flex gap-2">
+            <Button 
+              onClick={() => setShowCourseModal(true)}
+              className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700"
+            >
+              <Plus className="w-4 h-4 mr-2" />
+              Create New Course
+            </Button>
+          </div>
         </div>
 
         {/* Search and Filter */}

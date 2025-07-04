@@ -5,8 +5,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Brain, Mail, Lock, User } from "lucide-react";
+import { Brain, Mail, Lock, User, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/contexts/AuthContext";
 
 interface AuthModalProps {
   isOpen: boolean;
@@ -22,7 +23,9 @@ const AuthModal = ({ isOpen, onClose, mode, onModeChange }: AuthModalProps) => {
     password: '',
     confirmPassword: ''
   });
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const { toast } = useToast();
+  const { login, signup } = useAuth();
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData(prev => ({
@@ -31,7 +34,7 @@ const AuthModal = ({ isOpen, onClose, mode, onModeChange }: AuthModalProps) => {
     }));
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     if (mode === 'signup' && formData.password !== formData.confirmPassword) {
@@ -43,15 +46,34 @@ const AuthModal = ({ isOpen, onClose, mode, onModeChange }: AuthModalProps) => {
       return;
     }
 
-    // Simulate authentication success
-    toast({
-      title: mode === 'login' ? "Welcome back!" : "Account created!",
-      description: mode === 'login' ? "You have been logged in successfully." : "Your account has been created successfully.",
-    });
-    
-    // Close modal and redirect to dashboard
-    onClose();
-    window.location.href = '/dashboard';
+    setIsSubmitting(true);
+
+    try {
+      if (mode === 'login') {
+        await login(formData.email, formData.password);
+        toast({
+          title: "Welcome back!",
+          description: "You have been logged in successfully.",
+        });
+      } else {
+        await signup(formData.name, formData.email, formData.password);
+        toast({
+          title: "Account created!",
+          description: "Your account has been created successfully.",
+        });
+      }
+      
+      onClose();
+      window.location.href = '/dashboard';
+    } catch (error) {
+      toast({
+        title: "Authentication Error",
+        description: error instanceof Error ? error.message : "An error occurred during authentication.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -114,8 +136,19 @@ const AuthModal = ({ isOpen, onClose, mode, onModeChange }: AuthModalProps) => {
                 </div>
               </div>
 
-              <Button type="submit" className="w-full bg-purple-600 hover:bg-purple-700 text-white">
-                Sign In
+              <Button 
+                type="submit" 
+                className="w-full bg-purple-600 hover:bg-purple-700 text-white"
+                disabled={isSubmitting}
+              >
+                {isSubmitting ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Signing In...
+                  </>
+                ) : (
+                  'Sign In'
+                )}
               </Button>
             </form>
           </TabsContent>
@@ -190,8 +223,19 @@ const AuthModal = ({ isOpen, onClose, mode, onModeChange }: AuthModalProps) => {
                 </div>
               </div>
 
-              <Button type="submit" className="w-full bg-purple-600 hover:bg-purple-700 text-white">
-                Create Account
+              <Button 
+                type="submit" 
+                className="w-full bg-purple-600 hover:bg-purple-700 text-white"
+                disabled={isSubmitting}
+              >
+                {isSubmitting ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Creating Account...
+                  </>
+                ) : (
+                  'Create Account'
+                )}
               </Button>
             </form>
           </TabsContent>

@@ -9,13 +9,16 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Checkbox } from "@/components/ui/checkbox";
 import { Brain, BookOpen, Video, Target } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { createCourse } from "@/services/api";
+import { useAuth } from "@/contexts/AuthContext";
 
 interface CourseModalProps {
   isOpen: boolean;
   onClose: () => void;
+  onCourseCreated?: () => void;
 }
 
-const CourseModal = ({ isOpen, onClose }: CourseModalProps) => {
+const CourseModal = ({ isOpen, onClose, onCourseCreated }: CourseModalProps) => {
   const [step, setStep] = useState<'input' | 'preview' | 'generating'>('input');
   const [formData, setFormData] = useState({
     name: '',
@@ -25,7 +28,9 @@ const CourseModal = ({ isOpen, onClose }: CourseModalProps) => {
     category: '',
     difficulty: ''
   });
+  const [isCreating, setIsCreating] = useState(false);
   const { toast } = useToast();
+  const { user, token } = useAuth();
 
   const categories = [
     'Technology', 'Programming', 'Business', 'Marketing', 'Design', 
@@ -56,13 +61,52 @@ const CourseModal = ({ isOpen, onClose }: CourseModalProps) => {
     }, 3000);
   };
 
-  const handleCreateCourse = () => {
-    toast({
-      title: "Course Created!",
-      description: "Your AI-generated course has been created successfully.",
-    });
-    onClose();
-    setStep('input');
+  const handleCreateCourse = async () => {
+    if (!token) {
+      toast({
+        title: "Authentication Required",
+        description: "Please log in to create a course.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    setIsCreating(true);
+    try {
+      const courseData = {
+        ...formData,
+        generatedChapters: mockPreviewData.chapters.slice(0, formData.chapters).map((chapter, index) => ({
+          ...chapter,
+          order: index + 1
+        }))
+      };
+
+      await createCourse(token, courseData);
+      
+      toast({
+        title: "Course Created!",
+        description: "Your AI-generated course has been saved successfully.",
+      });
+      onClose();
+      setStep('input');
+      setFormData({
+        name: '',
+        description: '',
+        chapters: 5,
+        includeVideos: true,
+        category: '',
+        difficulty: ''
+      });
+      onCourseCreated?.();
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to create course. Please try again.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsCreating(false);
+    }
   };
 
   const mockPreviewData = {
@@ -266,11 +310,11 @@ const CourseModal = ({ isOpen, onClose }: CourseModalProps) => {
             </div>
 
             <div className="flex justify-end space-x-4">
-              <Button variant="outline" onClick={() => setStep('input')} className="border-slate-600 text-gray-300">
+              <Button variant="outline" onClick={() => setStep('input')} className="border-slate-600 text-gray-300" disabled={isCreating}>
                 Back to Edit
               </Button>
-              <Button onClick={handleCreateCourse} className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700">
-                Create Course
+              <Button onClick={handleCreateCourse} className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700" disabled={isCreating}>
+                {isCreating ? 'Creating...' : 'Create Course'}
               </Button>
             </div>
           </div>
