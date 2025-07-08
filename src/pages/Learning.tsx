@@ -12,6 +12,7 @@ import { formatDistanceToNow } from "date-fns";
 import DashboardLayout from "@/components/DashboardLayout";
 import CourseModal from "@/components/CourseModal";
 import placeholder from '@/../public/placeholder.svg';
+import { useNavigate } from 'react-router-dom';
 
 interface Course extends CourseData {
   _id: string;
@@ -32,6 +33,7 @@ const Learning = () => {
   const [isCourseModalOpen, setIsCourseModalOpen] = useState(false);
   const { toast } = useToast();
   const { token } = useAuth();
+  const navigate = useNavigate();
 
   const categories = [
     'Technology', 'Programming', 'Business', 'Marketing', 'Design', 
@@ -316,7 +318,7 @@ const Learning = () => {
                   </div>
                 </div>
                 <div className="flex gap-2 mt-auto pt-2">
-                  <Button size="sm" className="flex-1 bg-purple-600 hover:bg-purple-700 text-white">
+                  <Button size="sm" className="flex-1 bg-purple-600 hover:bg-purple-700 text-white" onClick={() => navigate(`/course/${course._id}`)}>
                     <Eye className="w-4 h-4 mr-1" />
                     View
                   </Button>

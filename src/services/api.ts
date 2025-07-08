@@ -209,9 +209,9 @@ export const getAllCourses = async (params?: {
   }
 };
 
-export const getCourseById = async (token: string, courseId: string): Promise<CourseResponse> => {
+export const getCourseById = async (token: string, courseId: string): Promise<any> => {
   try {
-    const response = await api.get<CourseResponse>(`/courses/${courseId}`, {
+    const response = await api.get(`/courses/${courseId}`, {
       headers: {
         Authorization: `Bearer ${token}`,
       },
