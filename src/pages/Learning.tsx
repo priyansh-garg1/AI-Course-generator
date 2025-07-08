@@ -265,91 +265,65 @@ const Learning = () => {
            )}
         </div>
       ) : (
-        <div className="relative">
-            {/* Soft background gradient for grid area */}
-            <div className="absolute inset-0 -z-10 bg-gradient-to-br from-slate-900 via-purple-950/40 to-slate-900 rounded-3xl blur-sm opacity-80" />
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-              {filteredCourses.map((course) => (
-                <Card
-                  key={course._id}
-                  className="group bg-slate-800 border border-slate-700 hover:border-purple-500 transition-all duration-300 rounded-2xl shadow-lg hover:shadow-2xl hover:scale-[1.025] overflow-hidden relative"
-                >
-                  {/* Course image placeholder */}
-                  <div className="h-36 w-full bg-gradient-to-r from-purple-700/60 to-pink-600/60 flex items-center justify-center">
-                    <img
-                      src={require('@/../public/placeholder.svg')}
-                      alt="Course Thumbnail"
-                      className="h-20 w-20 object-contain drop-shadow-lg opacity-80"
-                    />
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {filteredCourses.map((course) => (
+            <Card key={course._id} className="bg-slate-800 border-slate-700 hover:border-slate-600 transition-colors">
+              <CardHeader className="pb-3">
+                <div className="flex items-start justify-between">
+                  <div className="flex-1">
+                    <CardTitle className="text-white text-lg line-clamp-2">{course.name}</CardTitle>
+                    <CardDescription className="text-gray-400 mt-2 line-clamp-2">
+                      {course.description}
+                    </CardDescription>
                   </div>
-                  <CardHeader className="pb-3">
-                    <div className="flex items-start justify-between">
-                      <div className="flex-1">
-                        <CardTitle className="text-white text-lg line-clamp-2 group-hover:text-purple-400 transition-colors">
-                          {course.name}
-                        </CardTitle>
-                        <CardDescription className="text-gray-400 mt-2 line-clamp-2">
-                          {course.description}
-                        </CardDescription>
-                      </div>
-                    </div>
-                    <div className="flex flex-wrap gap-2 mt-3">
-                      <Badge className={`bg-gradient-to-r from-green-500 to-green-700 text-white capitalize shadow-sm flex items-center gap-1`}>
-                        <span className="w-2 h-2 rounded-full bg-white/80 mr-1" />
-                        {course.status}
-                      </Badge>
-                      <Badge className={`bg-gradient-to-r from-blue-500 to-purple-600 text-white flex items-center gap-1`}>
-                        <span className="w-2 h-2 rounded-full bg-white/80 mr-1" />
-                        {course.difficulty}
-                      </Badge>
-                      <Badge className="bg-gradient-to-r from-pink-500 to-purple-500 text-white flex items-center gap-1">
-                        <span className="w-2 h-2 rounded-full bg-white/80 mr-1" />
-                        {course.category}
-                      </Badge>
-                    </div>
-                  </CardHeader>
-                  <CardContent className="pt-0">
-                    <div className="flex items-center justify-between text-sm text-gray-400 mb-4">
-                      <div className="flex items-center">
-                        <BookOpen className="w-4 h-4 mr-1" />
-                        {course.chapters} chapters
-                      </div>
-                      <div className="flex items-center">
-                        <Clock className="w-4 h-4 mr-1" />
-                        {formatDistanceToNow(new Date(course.createdAt), { addSuffix: true })}
-                      </div>
-                    </div>
-                    {/* Progress bar (static for now) */}
-                    <div className="mb-4">
-                      <div className="w-full bg-slate-700 rounded-full h-2">
-                        <div className="bg-gradient-to-r from-purple-500 to-pink-500 h-2 rounded-full" style={{ width: '40%' }} />
-                      </div>
-                      <div className="text-xs text-gray-400 mt-1">Progress: 40%</div>
-                    </div>
-                    <div className="flex gap-2">
-                      <Button size="sm" className="flex-1 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white shadow-md">
-                        <Eye className="w-4 h-4 mr-1" />
-                        View
-                      </Button>
-                      <Button size="sm" className="flex-1 bg-gradient-to-r from-green-600 to-blue-600 hover:from-green-700 hover:to-blue-700 text-white shadow-md">
-                        <Play className="w-4 h-4 mr-1" />
-                        Start
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        className="border-slate-600 text-gray-300 hover:bg-slate-700"
-                        onClick={() => handleDeleteCourse(course._id)}
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </Button>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          </div>
-        )}
+                </div>
+                <div className="flex flex-wrap gap-2 mt-3">
+                  <Badge className={`${getStatusColor(course.status)} text-white capitalize`}>
+                    {course.status}
+                  </Badge>
+                  <Badge className={`${getDifficultyColor(course.difficulty)} text-white`}>
+                    {course.difficulty}
+                  </Badge>
+                  <Badge className="bg-blue-600 text-white">
+                    {course.category}
+                  </Badge>
+                </div>
+              </CardHeader>
+              <CardContent className="pt-0">
+                <div className="flex items-center justify-between text-sm text-gray-400 mb-4">
+                  <div className="flex items-center">
+                    <BookOpen className="w-4 h-4 mr-1" />
+                    {course.chapters} chapters
+                  </div>
+                  <div className="flex items-center">
+                    <Clock className="w-4 h-4 mr-1" />
+                    {formatDistanceToNow(new Date(course.createdAt), { addSuffix: true })}
+                  </div>
+                </div>
+                
+                <div className="flex gap-2">
+                  <Button size="sm" variant="outline" className="flex-1 border-slate-600 text-gray-300 hover:bg-slate-700">
+                    <Eye className="w-4 h-4 mr-1" />
+                    View
+                  </Button>
+                  <Button size="sm" variant="outline" className="flex-1 border-slate-600 text-gray-300 hover:bg-slate-700">
+                    <Play className="w-4 h-4 mr-1" />
+                    Start
+                  </Button>
+                  <Button 
+                    size="sm" 
+                    variant="outline" 
+                    className="border-slate-600 text-gray-300 hover:bg-slate-700"
+                    onClick={() => handleDeleteCourse(course._id)}
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+                 </div>
+       )}
 
        <CourseModal 
          isOpen={isCourseModalOpen}
