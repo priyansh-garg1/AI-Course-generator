@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Checkbox } from "@/components/ui/checkbox";
 import { Brain, BookOpen, Video, Target } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { createCourse } from "@/services/api";
+import { createCourse, generateCourseLayout } from "@/services/api";
 import { useAuth } from "@/contexts/AuthContext";
 
 interface CourseModalProps {
@@ -26,7 +26,8 @@ const CourseModal = ({ isOpen, onClose, onCourseCreated }: CourseModalProps) => 
     chapters: 5,
     includeVideos: true,
     category: '',
-    difficulty: ''
+    difficulty: '',
+    aiGeneratedLayout: null
   });
   const [isCreating, setIsCreating] = useState(false);
   const { toast } = useToast();
@@ -43,7 +44,7 @@ const CourseModal = ({ isOpen, onClose, onCourseCreated }: CourseModalProps) => 
     setFormData(prev => ({ ...prev, [field]: value }));
   };
 
-  const handleGeneratePreview = () => {
+  const handleGeneratePreview = async () => {
     if (!formData.name || !formData.description || !formData.category || !formData.difficulty) {
       toast({
         title: "Missing Information",
@@ -55,10 +56,34 @@ const CourseModal = ({ isOpen, onClose, onCourseCreated }: CourseModalProps) => 
 
     setStep('generating');
     
-    // Simulate AI generation delay
-    setTimeout(() => {
-      setStep('preview');
-    }, 3000);
+    try {
+      const userInput = `Course Name: ${formData.name}
+Description: ${formData.description}
+Category: ${formData.category}
+Difficulty: ${formData.difficulty}
+Number of Chapters: ${formData.chapters}
+Include Videos: ${formData.includeVideos}`;
+
+      const response = await generateCourseLayout(userInput);
+      
+      if (response.success) {
+        // Update form data with AI generated content
+        setFormData(prev => ({
+          ...prev,
+          aiGeneratedLayout: response.data.course
+        }));
+        setStep('preview');
+      } else {
+        throw new Error(response.message || 'Failed to generate course layout');
+      }
+    } catch (error: any) {
+      toast({
+        title: "Generation Failed",
+        description: error.message || "Failed to generate course layout. Please try again.",
+        variant: "destructive"
+      });
+      setStep('input');
+    }
   };
 
   const handleCreateCourse = async () => {
@@ -73,9 +98,10 @@ const CourseModal = ({ isOpen, onClose, onCourseCreated }: CourseModalProps) => 
 
     setIsCreating(true);
     try {
+      const previewData = getPreviewData();
       const courseData = {
         ...formData,
-        generatedChapters: mockPreviewData.chapters.slice(0, formData.chapters).map((chapter, index) => ({
+        generatedChapters: previewData.chapters.slice(0, formData.chapters).map((chapter, index) => ({
           ...chapter,
           order: index + 1
         }))
@@ -95,7 +121,8 @@ const CourseModal = ({ isOpen, onClose, onCourseCreated }: CourseModalProps) => 
         chapters: 5,
         includeVideos: true,
         category: '',
-        difficulty: ''
+        difficulty: '',
+        aiGeneratedLayout: null
       });
       onCourseCreated?.();
     } catch (error: any) {
@@ -109,27 +136,41 @@ const CourseModal = ({ isOpen, onClose, onCourseCreated }: CourseModalProps) => 
     }
   };
 
-  const mockPreviewData = {
-    chapters: [
-      {
-        title: "Introduction to Machine Learning Fundamentals",
-        description: "Understanding the basics of ML, its applications, and key concepts",
-        objectives: ["Define machine learning", "Identify ML types", "Explore real-world applications"],
-        videoKeywords: "machine learning introduction basics"
-      },
-      {
-        title: "Data Preprocessing and Feature Engineering",
-        description: "Learn how to clean and prepare data for machine learning models",
-        objectives: ["Data cleaning techniques", "Feature selection", "Data transformation"],
-        videoKeywords: "data preprocessing feature engineering"
-      },
-      {
-        title: "Supervised Learning Algorithms",
-        description: "Explore classification and regression algorithms",
-        objectives: ["Linear regression", "Decision trees", "Support vector machines"],
-        videoKeywords: "supervised learning algorithms classification"
-      }
-    ]
+  const getPreviewData = () => {
+    if (formData.aiGeneratedLayout) {
+      return {
+        chapters: formData.aiGeneratedLayout.chapters.map((chapter, index) => ({
+          title: chapter.chapterName,
+          description: `Duration: ${chapter.duration}`,
+          objectives: chapter.topics,
+          videoKeywords: chapter.chapterName.toLowerCase().replace(/\s+/g, ' ')
+        }))
+      };
+    }
+    
+    // Fallback to mock data
+    return {
+      chapters: [
+        {
+          title: "Introduction to Machine Learning Fundamentals",
+          description: "Understanding the basics of ML, its applications, and key concepts",
+          objectives: ["Define machine learning", "Identify ML types", "Explore real-world applications"],
+          videoKeywords: "machine learning introduction basics"
+        },
+        {
+          title: "Data Preprocessing and Feature Engineering",
+          description: "Learn how to clean and prepare data for machine learning models",
+          objectives: ["Data cleaning techniques", "Feature selection", "Data transformation"],
+          videoKeywords: "data preprocessing feature engineering"
+        },
+        {
+          title: "Supervised Learning Algorithms",
+          description: "Explore classification and regression algorithms",
+          objectives: ["Linear regression", "Decision trees", "Support vector machines"],
+          videoKeywords: "supervised learning algorithms classification"
+        }
+      ]
+    };
   };
 
   return (
@@ -278,7 +319,7 @@ const CourseModal = ({ isOpen, onClose, onCourseCreated }: CourseModalProps) => 
                 Generated Course Structure
               </h4>
               
-              {mockPreviewData.chapters.slice(0, formData.chapters).map((chapter, index) => (
+              {getPreviewData().chapters.slice(0, formData.chapters).map((chapter, index) => (
                 <div key={index} className="bg-slate-800/30 rounded-lg p-4 border border-slate-600">
                   <div className="flex items-start justify-between mb-3">
                     <h5 className="font-semibold text-white">Chapter {index + 1}: {chapter.title}</h5>

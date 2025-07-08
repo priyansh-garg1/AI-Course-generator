@@ -273,4 +273,36 @@ export const updateCourseStatus = async (token: string, courseId: string, status
   }
 };
 
+export const generateCourseLayout = async (userInput: string): Promise<{
+  success: boolean;
+  data: {
+    course: {
+      name: string;
+      description: string;
+      category: string;
+      level: string;
+      includeVideo: boolean;
+      noOfChapters: number;
+      bannerImagePrompt: string;
+      chapters: Array<{
+        chapterName: string;
+        duration: string;
+        topics: string[];
+      }>;
+    };
+  };
+  message?: string;
+  error?: string;
+}> => {
+  try {
+    const response = await api.post('/courses/generate', { userInput });
+    return response.data;
+  } catch (error: any) {
+    if (error.response?.data) {
+      throw new Error(error.response.data.message || error.response.data.error || 'Failed to generate course layout');
+    }
+    throw new Error('Network error');
+  }
+};
+
 export type { LoginData, SignupData, AuthResponse, CourseData, CourseResponse, CoursesListResponse }; 
