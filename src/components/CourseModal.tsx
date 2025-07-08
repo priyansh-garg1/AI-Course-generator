@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Checkbox } from "@/components/ui/checkbox";
 import { Brain, BookOpen, Video, Target } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { createCourse, generateCourseLayout } from "@/services/api";
+import { createCourse, generateCourseLayout, generateAndSaveFullCourse } from "@/services/api";
 import { useAuth } from "@/contexts/AuthContext";
 
 interface CourseModalProps {
@@ -96,35 +96,39 @@ Include Videos: ${formData.includeVideos}`;
       return;
     }
 
+    if (!formData.aiGeneratedLayout) {
+      toast({
+        title: "No Course Layout",
+        description: "Please generate a course layout first.",
+        variant: "destructive"
+      });
+      return;
+    }
+
     setIsCreating(true);
     try {
-      const previewData = getPreviewData();
-      const courseData = {
-        ...formData,
-        generatedChapters: previewData.chapters.slice(0, formData.chapters).map((chapter, index) => ({
-          ...chapter,
-          order: index + 1
-        }))
-      };
-
-      await createCourse(token, courseData);
-      
-      toast({
-        title: "Course Created!",
-        description: "Your AI-generated course has been saved successfully.",
-      });
-      onClose();
-      setStep('input');
-      setFormData({
-        name: '',
-        description: '',
-        chapters: 5,
-        includeVideos: true,
-        category: '',
-        difficulty: '',
-        aiGeneratedLayout: null
-      });
-      onCourseCreated?.();
+      // Call the new API to generate and save the full course
+      const response = await generateAndSaveFullCourse(token, formData.aiGeneratedLayout);
+      if (response.success) {
+        toast({
+          title: "Course Created!",
+          description: "Your full AI-generated course has been saved successfully.",
+        });
+        onClose();
+        setStep('input');
+        setFormData({
+          name: '',
+          description: '',
+          chapters: 5,
+          includeVideos: true,
+          category: '',
+          difficulty: '',
+          aiGeneratedLayout: null
+        });
+        onCourseCreated?.();
+      } else {
+        throw new Error(response.message || 'Failed to create course');
+      }
     } catch (error: any) {
       toast({
         title: "Error",

@@ -305,4 +305,20 @@ export const generateCourseLayout = async (userInput: string): Promise<{
   }
 };
 
+export const generateAndSaveFullCourse = async (token: string, courseLayout: any): Promise<any> => {
+  try {
+    const response = await api.post('/courses/generate-full', { courseLayout }, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+    return response.data;
+  } catch (error: any) {
+    if (error.response?.data) {
+      throw new Error(error.response.data.message || error.response.data.error || 'Failed to generate and save full course');
+    }
+    throw new Error('Network error');
+  }
+};
+
 export type { LoginData, SignupData, AuthResponse, CourseData, CourseResponse, CoursesListResponse }; 
