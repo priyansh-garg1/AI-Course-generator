@@ -11,6 +11,7 @@ import { getCourses, deleteCourse, updateCourseStatus, CourseData } from "@/serv
 import { formatDistanceToNow } from "date-fns";
 import DashboardLayout from "@/components/DashboardLayout";
 import CourseModal from "@/components/CourseModal";
+import placeholder from '@/../public/placeholder.svg';
 
 interface Course extends CourseData {
   _id: string;
@@ -265,13 +266,18 @@ const Learning = () => {
            )}
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
           {filteredCourses.map((course) => (
-            <Card key={course._id} className="bg-slate-800 border-slate-700 hover:border-slate-600 transition-colors">
+            <Card
+              key={course._id}
+              className="bg-slate-800 border border-slate-700 hover:border-slate-600 transition-all duration-300 rounded-2xl shadow-sm h-full flex flex-col"
+            >
               <CardHeader className="pb-3">
                 <div className="flex items-start justify-between">
                   <div className="flex-1">
-                    <CardTitle className="text-white text-lg line-clamp-2">{course.name}</CardTitle>
+                    <CardTitle className="text-white text-lg line-clamp-2">
+                      {course.name}
+                    </CardTitle>
                     <CardDescription className="text-gray-400 mt-2 line-clamp-2">
                       {course.description}
                     </CardDescription>
@@ -289,30 +295,38 @@ const Learning = () => {
                   </Badge>
                 </div>
               </CardHeader>
-              <CardContent className="pt-0">
-                <div className="flex items-center justify-between text-sm text-gray-400 mb-4">
-                  <div className="flex items-center">
-                    <BookOpen className="w-4 h-4 mr-1" />
-                    {course.chapters} chapters
+              <CardContent className="pt-0 flex flex-col flex-1 justify-between">
+                <div>
+                  <div className="flex items-center justify-between text-sm text-gray-400 mb-4">
+                    <div className="flex items-center">
+                      <BookOpen className="w-4 h-4 mr-1" />
+                      {course.chapters} chapters
+                    </div>
+                    <div className="flex items-center">
+                      <Clock className="w-4 h-4 mr-1" />
+                      {formatDistanceToNow(new Date(course.createdAt), { addSuffix: true })}
+                    </div>
                   </div>
-                  <div className="flex items-center">
-                    <Clock className="w-4 h-4 mr-1" />
-                    {formatDistanceToNow(new Date(course.createdAt), { addSuffix: true })}
+                  {/* Progress bar (static for now) */}
+                  <div className="mb-4">
+                    <div className="w-full bg-slate-700 rounded-full h-2">
+                      <div className="bg-purple-600 h-2 rounded-full" style={{ width: '40%' }} />
+                    </div>
+                    <div className="text-xs text-gray-400 mt-1">Progress: 40%</div>
                   </div>
                 </div>
-                
-                <div className="flex gap-2">
-                  <Button size="sm" variant="outline" className="flex-1 border-slate-600 text-gray-300 hover:bg-slate-700">
+                <div className="flex gap-2 mt-auto pt-2">
+                  <Button size="sm" className="flex-1 bg-purple-600 hover:bg-purple-700 text-white">
                     <Eye className="w-4 h-4 mr-1" />
                     View
                   </Button>
-                  <Button size="sm" variant="outline" className="flex-1 border-slate-600 text-gray-300 hover:bg-slate-700">
+                  <Button size="sm" className="flex-1 bg-slate-700 hover:bg-slate-600 text-white">
                     <Play className="w-4 h-4 mr-1" />
                     Start
                   </Button>
-                  <Button 
-                    size="sm" 
-                    variant="outline" 
+                  <Button
+                    size="sm"
+                    variant="outline"
                     className="border-slate-600 text-gray-300 hover:bg-slate-700"
                     onClick={() => handleDeleteCourse(course._id)}
                   >
@@ -322,7 +336,7 @@ const Learning = () => {
               </CardContent>
             </Card>
           ))}
-                 </div>
+        </div>
        )}
 
        <CourseModal 
