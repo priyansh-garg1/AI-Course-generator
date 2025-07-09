@@ -1,10 +1,12 @@
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { getCourseById } from '@/services/api';
+import { getCourseById, getEnrollmentDetails, markTopicCompleted, enrollInCourse } from '@/services/api';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Loader2, ArrowLeft, Youtube, BookOpen, Clock, Target, Play } from 'lucide-react';
+import { Loader2, ArrowLeft, Youtube, BookOpen, Clock, Target, Play, CheckCircle, UserCheck } from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/contexts/AuthContext';
 import DashboardLayout from '@/components/DashboardLayout';
 
 interface Chapter {
@@ -22,6 +24,11 @@ export default function CourseView() {
   const [loading, setLoading] = useState(true);
   const [activeChapter, setActiveChapter] = useState(0);
   const [activeTopic, setActiveTopic] = useState(0);
+  const [enrollment, setEnrollment] = useState<any>(null);
+  const [enrolling, setEnrolling] = useState(false);
+  const [progress, setProgress] = useState<any>(null);
+  const { toast } = useToast();
+  const { user, token } = useAuth();
 
   useEffect(() => {
     async function fetchCourse() {
@@ -40,10 +47,103 @@ export default function CourseView() {
     if (id) fetchCourse();
   }, [id]);
 
+  useEffect(() => {
+    async function checkEnrollment() {
+      if (token && id) {
+        try {
+          const response = await getEnrollmentDetails(token, id);
+          setEnrollment(response.data.enrollment);
+          setProgress(response.data.progress);
+        } catch (err) {
+          // User is not enrolled
+          setEnrollment(null);
+          setProgress(null);
+        }
+      }
+    }
+    checkEnrollment();
+  }, [token, id]);
+
   // Reset active topic when chapter changes
   useEffect(() => {
     setActiveTopic(0);
   }, [activeChapter]);
+
+  const handleEnroll = async () => {
+    if (!token) {
+      toast({
+        title: "Authentication Required",
+        description: "Please log in to enroll in this course.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    setEnrolling(true);
+    try {
+      const response = await enrollInCourse(token, id!);
+      if (response.success) {
+        toast({
+          title: "Successfully Enrolled!",
+          description: "You can now track your progress.",
+        });
+        setEnrollment(response.data);
+        // Refresh enrollment details to get progress
+        const enrollmentResponse = await getEnrollmentDetails(token, id);
+        setProgress(enrollmentResponse.data.progress);
+      }
+    } catch (error: any) {
+      toast({
+        title: "Enrollment Failed",
+        description: error.message || "Failed to enroll in course. Please try again.",
+        variant: "destructive"
+      });
+    } finally {
+      setEnrolling(false);
+    }
+  };
+
+  const handleNextTopic = async () => {
+    if (activeTopic < currentChapter.topics.length - 1) {
+      const nextTopic = activeTopic + 1;
+      setActiveTopic(nextTopic);
+      await markTopicAsCompleted(activeChapter, nextTopic);
+    } else if (activeChapter < chapterGroups.length - 1) {
+      const nextChapter = activeChapter + 1;
+      setActiveChapter(nextChapter);
+      setActiveTopic(0);
+      await markTopicAsCompleted(nextChapter, 0);
+    }
+  };
+
+  const handlePreviousTopic = () => {
+    if (activeTopic > 0) {
+      setActiveTopic(activeTopic - 1);
+    } else if (activeChapter > 0) {
+      setActiveChapter(activeChapter - 1);
+      setActiveTopic(chapterGroups[activeChapter - 1].topics.length - 1);
+    }
+  };
+
+  const markTopicAsCompleted = async (chapterOrder: number, topicIndex: number) => {
+    if (!token || !enrollment) return;
+
+    try {
+      const response = await markTopicCompleted(token, id!, chapterOrder, topicIndex);
+      if (response.success) {
+        setProgress(response.data.progress);
+      }
+    } catch (error) {
+      console.error('Failed to mark topic as completed:', error);
+    }
+  };
+
+  const isTopicCompleted = (chapterOrder: number, topicIndex: number) => {
+    if (!enrollment) return false;
+    return enrollment.progress.completedTopics.some((topic: any) => 
+      topic.chapterOrder === chapterOrder && topic.topicIndex === topicIndex
+    );
+  };
 
   if (loading) {
     return (
@@ -102,24 +202,6 @@ export default function CourseView() {
     }
   };
 
-  const handleNextTopic = () => {
-    if (activeTopic < currentChapter.topics.length - 1) {
-      setActiveTopic(activeTopic + 1);
-    } else if (activeChapter < chapterGroups.length - 1) {
-      setActiveChapter(activeChapter + 1);
-      setActiveTopic(0);
-    }
-  };
-
-  const handlePreviousTopic = () => {
-    if (activeTopic > 0) {
-      setActiveTopic(activeTopic - 1);
-    } else if (activeChapter > 0) {
-      setActiveChapter(activeChapter - 1);
-      setActiveTopic(chapterGroups[activeChapter - 1].topics.length - 1);
-    }
-  };
-
   return (
     <DashboardLayout>
       <div className="container mx-auto px-4 py-8">
@@ -128,7 +210,7 @@ export default function CourseView() {
           <Button onClick={() => navigate(-1)} variant="outline" className="mb-4 border-slate-600 text-gray-300">
             <ArrowLeft className="w-4 h-4 mr-2" /> Back to Courses
           </Button>
-
+          
           {/* Course Overview */}
           <Card className="bg-slate-800 border border-slate-700 rounded-2xl shadow-md mb-6">
             <CardHeader>
@@ -136,7 +218,7 @@ export default function CourseView() {
                 <div className="flex-1">
                   <CardTitle className="text-white text-3xl mb-3">{course.name}</CardTitle>
                   <p className="text-gray-300 text-lg mb-4">{course.description}</p>
-                  <div className="flex flex-wrap gap-2">
+                  <div className="flex flex-wrap gap-2 mb-4">
                     <Badge className="bg-blue-600 text-white">
                       {course.category}
                     </Badge>
@@ -146,13 +228,54 @@ export default function CourseView() {
                     <Badge className="bg-purple-600 text-white">
                       {course.chapters} Chapters
                     </Badge>
+                    {enrollment && (
+                      <Badge className="bg-green-600 text-white flex items-center gap-1">
+                        <UserCheck className="w-3 h-3" />
+                        Enrolled
+                      </Badge>
+                    )}
                   </div>
+                  
+                  {/* Progress Bar */}
+                  {progress && (
+                    <div className="mb-4">
+                      <div className="flex justify-between text-sm text-gray-400 mb-2">
+                        <span>Progress</span>
+                        <span>{progress.completionPercentage}%</span>
+                      </div>
+                      <div className="w-full bg-slate-700 rounded-full h-2">
+                        <div 
+                          className="bg-green-600 h-2 rounded-full transition-all duration-300" 
+                          style={{ width: `${progress.completionPercentage}%` }} 
+                        />
+                      </div>
+                      <div className="text-xs text-gray-400 mt-1">
+                        {progress.completedTopics} of {progress.totalTopics} topics completed
+                      </div>
+                    </div>
+                  )}
                 </div>
                 <div className="flex flex-col items-center gap-2">
                   <div className="text-center">
                     <div className="text-2xl font-bold text-white">{chapterGroups.length}</div>
                     <div className="text-gray-400 text-sm">Total Chapters</div>
                   </div>
+                  {!enrollment && (
+                    <Button 
+                      onClick={handleEnroll} 
+                      disabled={enrolling}
+                      className="bg-purple-600 hover:bg-purple-700 text-white"
+                    >
+                      {enrolling ? (
+                        <>
+                          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                          Enrolling...
+                        </>
+                      ) : (
+                        'Enroll Now'
+                      )}
+                    </Button>
+                  )}
                 </div>
               </div>
             </CardHeader>
@@ -175,9 +298,9 @@ export default function CourseView() {
                     <div key={idx}>
                       <div
                         className={`p-3 rounded-lg cursor-pointer transition-all duration-200 ${activeChapter === idx
-                            ? 'bg-purple-600 text-white'
-                            : 'bg-slate-700 text-gray-300 hover:bg-slate-600'
-                          }`}
+                          ? 'bg-purple-600 text-white'
+                          : 'bg-slate-700 text-gray-300 hover:bg-slate-600'
+                        }`}
                         onClick={() => setActiveChapter(idx)}
                       >
                         <div className="font-medium text-sm mb-1">
@@ -201,11 +324,18 @@ export default function CourseView() {
                             >
                               <div className="flex items-start gap-2">
                                 <div className={`w-2 h-2 rounded-full mt-1.5 flex-shrink-0 ${
-                                  activeTopic === topicIdx ? 'bg-purple-400' : 'bg-gray-500'
+                                  isTopicCompleted(chapterGroup.order, topicIdx) 
+                                    ? 'bg-green-400' 
+                                    : activeTopic === topicIdx 
+                                      ? 'bg-purple-400' 
+                                      : 'bg-gray-500'
                                 }`} />
-                                <div className="text-sm leading-relaxed">
+                                <div className="text-sm leading-relaxed flex-1">
                                   {topic.description}
                                 </div>
+                                {isTopicCompleted(chapterGroup.order, topicIdx) && (
+                                  <CheckCircle className="w-4 h-4 text-green-400 flex-shrink-0" />
+                                )}
                               </div>
                             </div>
                           ))}
@@ -236,6 +366,12 @@ export default function CourseView() {
                         <Clock className="w-4 h-4" />
                         <span>~{Math.floor(currentTopic?.content?.length / 10)} min</span>
                       </div>
+                      {isTopicCompleted(currentChapter?.order, activeTopic) && (
+                        <div className="flex items-center gap-1 text-green-400">
+                          <CheckCircle className="w-4 h-4" />
+                          <span>Completed</span>
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -248,7 +384,7 @@ export default function CourseView() {
                       <Play className="w-5 h-5 text-purple-400" />
                       <span className="text-white font-semibold">{currentTopic.description}</span>
                     </div>
-
+                    
                     {/* YouTube Video for this topic */}
                     {currentTopic.youtubeVideo && (
                       <div className="mb-6">

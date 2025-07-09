@@ -3,7 +3,10 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Loader2, ArrowLeft, BookOpen, Clock, Target, Play, Users, Calendar } from 'lucide-react';
+import { Loader2, ArrowLeft, BookOpen, Clock, Target, Play, Users, Calendar, CheckCircle } from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/contexts/AuthContext';
+import { enrollInCourse, getEnrollmentDetails } from '@/services/api';
 import axios from 'axios';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
@@ -36,6 +39,10 @@ export default function CoursePreview() {
   const navigate = useNavigate();
   const [course, setCourse] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [enrolling, setEnrolling] = useState(false);
+  const [enrollment, setEnrollment] = useState<any>(null);
+  const { toast } = useToast();
+  const { user, token } = useAuth();
 
   useEffect(() => {
     async function fetchCourse() {
@@ -54,6 +61,54 @@ export default function CoursePreview() {
     }
     if (id) fetchCourse();
   }, [id]);
+
+  useEffect(() => {
+    async function checkEnrollment() {
+      if (token && id) {
+        try {
+          const response = await getEnrollmentDetails(token, id);
+          setEnrollment(response.data);
+        } catch (err) {
+          // User is not enrolled, which is fine
+          setEnrollment(null);
+        }
+      }
+    }
+    checkEnrollment();
+  }, [token, id]);
+
+  const handleEnroll = async () => {
+    if (!token) {
+      toast({
+        title: "Authentication Required",
+        description: "Please log in to enroll in this course.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    setEnrolling(true);
+    try {
+      const response = await enrollInCourse(token, id!);
+      if (response.success) {
+        toast({
+          title: "Successfully Enrolled!",
+          description: "You can now access the full course content.",
+        });
+        setEnrollment(response.data);
+        // Navigate to the course view
+        navigate(`/course/${id}`);
+      }
+    } catch (error: any) {
+      toast({
+        title: "Enrollment Failed",
+        description: error.message || "Failed to enroll in course. Please try again.",
+        variant: "destructive"
+      });
+    } finally {
+      setEnrolling(false);
+    }
+  };
 
   if (loading) {
     return (
@@ -136,6 +191,12 @@ export default function CoursePreview() {
                   {layout.includeVideo && (
                     <Badge className="bg-red-600 text-white px-4 py-2 text-sm">
                       Includes Videos
+                    </Badge>
+                  )}
+                  {enrollment && (
+                    <Badge className="bg-green-600 text-white px-4 py-2 text-sm flex items-center gap-1">
+                      <CheckCircle className="w-3 h-3" />
+                      Enrolled
                     </Badge>
                   )}
                 </div>
@@ -228,17 +289,39 @@ export default function CoursePreview() {
         {/* Call to Action */}
         <Card className="bg-slate-800 border border-slate-700 rounded-2xl mt-8">
           <CardContent className="p-8 text-center">
-            <h3 className="text-2xl font-bold text-white mb-4">Ready to Start Learning?</h3>
+            <h3 className="text-2xl font-bold text-white mb-4">
+              {enrollment ? 'Ready to Continue Learning?' : 'Ready to Start Learning?'}
+            </h3>
             <p className="text-gray-300 mb-6">
-              Sign up to access the full course content, track your progress, and earn certificates.
+              {enrollment 
+                ? 'Continue your progress and track your learning journey.'
+                : 'Sign up to access the full course content, track your progress, and earn certificates.'
+              }
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <Button 
-                onClick={() => navigate('/auth')} 
-                className="bg-purple-600 hover:bg-purple-700 text-white px-8 py-3"
-              >
-                Sign Up to Access Course
-              </Button>
+              {enrollment ? (
+                <Button 
+                  onClick={() => navigate(`/course/${id}`)} 
+                  className="bg-purple-600 hover:bg-purple-700 text-white px-8 py-3"
+                >
+                  Continue Course
+                </Button>
+              ) : (
+                <Button 
+                  onClick={handleEnroll} 
+                  disabled={enrolling}
+                  className="bg-purple-600 hover:bg-purple-700 text-white px-8 py-3"
+                >
+                  {enrolling ? (
+                    <>
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      Enrolling...
+                    </>
+                  ) : (
+                    'Enroll Now'
+                  )}
+                </Button>
+              )}
               <Button 
                 variant="outline" 
                 onClick={() => navigate('/')}

@@ -322,4 +322,112 @@ export const generateAndSaveFullCourse = async (token: string, courseLayout: any
   }
 };
 
+// Enrollment API functions
+export const enrollInCourse = async (token: string, courseId: string): Promise<any> => {
+  try {
+    const response = await api.post('/enrollments', { courseId }, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+    return response.data;
+  } catch (error: any) {
+    if (error.response?.data) {
+      throw new Error(error.response.data.message || error.response.data.error || 'Failed to enroll in course');
+    }
+    throw new Error('Network error');
+  }
+};
+
+export const getUserEnrollments = async (token: string, params?: {
+  page?: number;
+  limit?: number;
+  status?: string;
+}): Promise<any> => {
+  try {
+    const response = await api.get('/enrollments', {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+      params,
+    });
+    return response.data;
+  } catch (error: any) {
+    if (error.response?.data) {
+      throw new Error(error.response.data.message || error.response.data.error || 'Failed to fetch enrollments');
+    }
+    throw new Error('Network error');
+  }
+};
+
+export const getEnrollmentDetails = async (token: string, courseId: string): Promise<any> => {
+  try {
+    const response = await api.get(`/enrollments/${courseId}`, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+    return response.data;
+  } catch (error: any) {
+    if (error.response?.data) {
+      throw new Error(error.response.data.message || error.response.data.error || 'Failed to fetch enrollment details');
+    }
+    throw new Error('Network error');
+  }
+};
+
+export const markTopicCompleted = async (token: string, courseId: string, chapterOrder: number, topicIndex: number): Promise<any> => {
+  try {
+    const response = await api.post(`/enrollments/${courseId}/progress`, 
+      { chapterOrder, topicIndex }, 
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      }
+    );
+    return response.data;
+  } catch (error: any) {
+    if (error.response?.data) {
+      throw new Error(error.response.data.message || error.response.data.error || 'Failed to mark topic as completed');
+    }
+    throw new Error('Network error');
+  }
+};
+
+export const updateEnrollmentStatus = async (token: string, courseId: string, status: string): Promise<any> => {
+  try {
+    const response = await api.patch(`/enrollments/${courseId}/status`, 
+      { status }, 
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      }
+    );
+    return response.data;
+  } catch (error: any) {
+    if (error.response?.data) {
+      throw new Error(error.response.data.message || error.response.data.error || 'Failed to update enrollment status');
+    }
+    throw new Error('Network error');
+  }
+};
+
+export const unenrollFromCourse = async (token: string, courseId: string): Promise<any> => {
+  try {
+    const response = await api.delete(`/enrollments/${courseId}`, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+    return response.data;
+  } catch (error: any) {
+    if (error.response?.data) {
+      throw new Error(error.response.data.message || error.response.data.error || 'Failed to unenroll from course');
+    }
+    throw new Error('Network error');
+  }
+};
+
 export type { LoginData, SignupData, AuthResponse, CourseData, CourseResponse, CoursesListResponse }; 
