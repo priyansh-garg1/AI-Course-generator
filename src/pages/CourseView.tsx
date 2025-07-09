@@ -452,7 +452,7 @@ export default function CourseView() {
 
                     {/* Topic Content */}
                     {currentTopic.content && (
-                      <div className="prose prose-invert max-w-none text-gray-100 overflow-auto leading-relaxed"
+                      <div className="course-content overflow-auto leading-relaxed"
                            style={{ maxHeight: '50vh' }}
                            dangerouslySetInnerHTML={{ 
                              __html: currentTopic.content.replace(/<video[^>]*>.*?<\/video>/gs, '') 

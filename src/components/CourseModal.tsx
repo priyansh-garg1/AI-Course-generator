@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -19,7 +18,7 @@ interface CourseModalProps {
 }
 
 const CourseModal = ({ isOpen, onClose, onCourseCreated }: CourseModalProps) => {
-  const [step, setStep] = useState<'input' | 'preview' | 'generating'>('input');
+  const [step, setStep] = useState<'input' | 'preview' | 'generating' | 'creating'>('input');
   const [formData, setFormData] = useState({
     name: '',
     description: '',
@@ -30,6 +29,7 @@ const CourseModal = ({ isOpen, onClose, onCourseCreated }: CourseModalProps) => 
     aiGeneratedLayout: null
   });
   const [isCreating, setIsCreating] = useState(false);
+  const [generationProgress, setGenerationProgress] = useState(0);
   const { toast } = useToast();
   const { user, token } = useAuth();
 
@@ -41,6 +41,20 @@ const CourseModal = ({ isOpen, onClose, onCourseCreated }: CourseModalProps) => 
   const difficulties = ['Beginner', 'Intermediate', 'Advanced'];
 
   const handleInputChange = (field: string, value: any) => {
+    if (field === 'chapters') {
+      const numValue = parseInt(value);
+      if (numValue > 7) {
+        toast({
+          title: "Invalid Chapter Count",
+          description: "Maximum number of chapters is 7 for optimal content quality.",
+          variant: "destructive"
+        });
+        return;
+      }
+      if (numValue < 1) {
+        return;
+      }
+    }
     setFormData(prev => ({ ...prev, [field]: value }));
   };
 
@@ -49,6 +63,15 @@ const CourseModal = ({ isOpen, onClose, onCourseCreated }: CourseModalProps) => 
       toast({
         title: "Missing Information",
         description: "Please fill in all required fields.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    if (formData.chapters < 1 || formData.chapters > 7) {
+      toast({
+        title: "Invalid Chapter Count",
+        description: "Number of chapters must be between 1 and 7.",
         variant: "destructive"
       });
       return;
@@ -67,7 +90,6 @@ Include Videos: ${formData.includeVideos}`;
       const response = await generateCourseLayout(userInput);
       
       if (response.success) {
-        // Update form data with AI generated content
         setFormData(prev => ({
           ...prev,
           aiGeneratedLayout: response.data.course
@@ -105,10 +127,23 @@ Include Videos: ${formData.includeVideos}`;
       return;
     }
 
-    setIsCreating(true);
+    setStep('creating');
+    setGenerationProgress(0);
+    
+    // Simulate progress updates
+    const progressInterval = setInterval(() => {
+      setGenerationProgress(prev => {
+        if (prev >= 90) return prev;
+        return prev + Math.random() * 10;
+      });
+    }, 2000);
+
     try {
       // Call the new API to generate and save the full course
       const response = await generateAndSaveFullCourse(token, formData.aiGeneratedLayout);
+      clearInterval(progressInterval);
+      setGenerationProgress(100);
+      
       if (response.success) {
         toast({
           title: "Course Created!",
@@ -130,13 +165,16 @@ Include Videos: ${formData.includeVideos}`;
         throw new Error(response.message || 'Failed to create course');
       }
     } catch (error: any) {
+      clearInterval(progressInterval);
       toast({
         title: "Error",
         description: error.message || "Failed to create course. Please try again.",
         variant: "destructive"
       });
+      setStep('preview');
     } finally {
       setIsCreating(false);
+      setGenerationProgress(0);
     }
   };
 
@@ -187,12 +225,14 @@ Include Videos: ${formData.includeVideos}`;
               {step === 'input' && 'Create New Course'}
               {step === 'generating' && 'Generating Course...'}
               {step === 'preview' && 'Course Preview'}
+              {step === 'creating' && 'Creating Full Course...'}
             </DialogTitle>
           </div>
           <DialogDescription className="text-gray-300">
             {step === 'input' && 'Provide course details and let AI generate comprehensive content'}
             {step === 'generating' && 'AI is creating your course structure and content'}
             {step === 'preview' && 'Review and customize your AI-generated course'}
+            {step === 'creating' && 'AI is generating detailed content with examples, exercises, and videos'}
           </DialogDescription>
         </DialogHeader>
 
@@ -217,11 +257,12 @@ Include Videos: ${formData.includeVideos}`;
                     id="chapters"
                     type="number"
                     min="1"
-                    max="20"
+                    max="7"
                     value={formData.chapters}
                     onChange={(e) => handleInputChange('chapters', parseInt(e.target.value))}
                     className="bg-slate-800 border-slate-600 text-white mt-2"
                   />
+                  <p className="text-xs text-gray-400 mt-1">Maximum 7 chapters for optimal content quality</p>
                 </div>
 
                 <div>
@@ -297,10 +338,90 @@ Include Videos: ${formData.includeVideos}`;
         {step === 'generating' && (
           <div className="text-center py-12">
             <Brain className="h-16 w-16 text-purple-400 mx-auto mb-6 animate-pulse" />
-            <h3 className="text-xl font-semibold text-white mb-2">AI is working its magic...</h3>
-            <p className="text-gray-300 mb-6">Generating course structure and content based on your specifications</p>
-            <div className="w-full bg-slate-700 rounded-full h-2">
+            <h3 className="text-xl font-semibold text-white mb-2">AI is creating comprehensive content...</h3>
+            <p className="text-gray-300 mb-6">Generating detailed course content with examples, exercises, and key takeaways. This may take a few minutes for thorough content creation.</p>
+            <div className="w-full bg-slate-700 rounded-full h-2 mb-4">
               <div className="bg-gradient-to-r from-purple-600 to-pink-600 h-2 rounded-full animate-pulse" style={{ width: '70%' }} />
+            </div>
+            <div className="text-sm text-gray-400 space-y-2">
+              <div className="flex items-center justify-center gap-2">
+                <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
+                <span>Creating course structure</span>
+              </div>
+              <div className="flex items-center justify-center gap-2">
+                <div className="w-2 h-2 bg-purple-400 rounded-full animate-pulse"></div>
+                <span>Adding examples and exercises</span>
+              </div>
+              <div className="flex items-center justify-center gap-2">
+                <div className="w-2 h-2 bg-yellow-400 rounded-full animate-pulse"></div>
+                <span>Finding relevant videos</span>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {step === 'creating' && (
+          <div className="text-center py-12">
+            <div className="relative mb-8">
+              <Brain className="h-20 w-20 text-purple-400 mx-auto animate-pulse" />
+              <div className="absolute inset-0 flex items-center justify-center">
+                <div className="w-16 h-16 border-4 border-purple-600 border-t-transparent rounded-full animate-spin"></div>
+              </div>
+            </div>
+            
+            <h3 className="text-2xl font-bold text-white mb-4">Creating Your Full Course</h3>
+            <p className="text-gray-300 mb-8 text-lg">AI is generating comprehensive content with detailed examples, exercises, and video recommendations. This process may take 2-3 minutes.</p>
+            
+            {/* Progress Bar */}
+            <div className="w-full bg-slate-700 rounded-full h-3 mb-6">
+              <div 
+                className="bg-gradient-to-r from-purple-600 via-pink-600 to-blue-600 h-3 rounded-full transition-all duration-1000 ease-out"
+                style={{ width: `${generationProgress}%` }}
+              />
+            </div>
+            
+            <div className="text-white font-semibold mb-6">
+              {Math.round(generationProgress)}% Complete
+            </div>
+            
+            {/* Progress Steps */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+              <div className={`p-4 rounded-lg border ${generationProgress >= 20 ? 'bg-green-600/20 border-green-500' : 'bg-slate-700 border-slate-600'}`}>
+                <div className="flex items-center gap-2 mb-2">
+                  <div className={`w-3 h-3 rounded-full ${generationProgress >= 20 ? 'bg-green-400' : 'bg-gray-500'}`}></div>
+                  <span className="text-sm font-medium">Content Generation</span>
+                </div>
+                <p className="text-xs text-gray-300">Creating detailed HTML content for each topic</p>
+              </div>
+              
+              <div className={`p-4 rounded-lg border ${generationProgress >= 60 ? 'bg-blue-600/20 border-blue-500' : 'bg-slate-700 border-slate-600'}`}>
+                <div className="flex items-center gap-2 mb-2">
+                  <div className={`w-3 h-3 rounded-full ${generationProgress >= 60 ? 'bg-blue-400' : 'bg-gray-500'}`}></div>
+                  <span className="text-sm font-medium">Video Integration</span>
+                </div>
+                <p className="text-xs text-gray-300">Finding relevant YouTube videos for each topic</p>
+              </div>
+              
+              <div className={`p-4 rounded-lg border ${generationProgress >= 90 ? 'bg-purple-600/20 border-purple-500' : 'bg-slate-700 border-slate-600'}`}>
+                <div className="flex items-center gap-2 mb-2">
+                  <div className={`w-3 h-3 rounded-full ${generationProgress >= 90 ? 'bg-purple-400' : 'bg-gray-500'}`}></div>
+                  <span className="text-sm font-medium">Course Saving</span>
+                </div>
+                <p className="text-xs text-gray-300">Saving course to database</p>
+              </div>
+            </div>
+            
+            {/* Current Activity */}
+            <div className="bg-slate-800/50 rounded-lg p-4 border border-slate-600">
+              <div className="flex items-center justify-center gap-2 text-sm text-gray-300">
+                <div className="w-2 h-2 bg-purple-400 rounded-full animate-pulse"></div>
+                <span>
+                  {generationProgress < 20 && "Initializing content generation..."}
+                  {generationProgress >= 20 && generationProgress < 60 && "Generating detailed content with examples and exercises..."}
+                  {generationProgress >= 60 && generationProgress < 90 && "Finding and integrating relevant videos..."}
+                  {generationProgress >= 90 && "Finalizing and saving course..."}
+                </span>
+              </div>
             </div>
           </div>
         )}

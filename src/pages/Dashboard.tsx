@@ -330,17 +330,16 @@ const Dashboard = () => {
             </h3>
             <p className="text-gray-400 mb-6">
               {courses.length === 0 
-                ? "Create your first AI-generated course to get started"
+                ? "Explore the courses and create your own"
                 : "Try adjusting your search or filters"
               }
             </p>
             {courses.length === 0 && (
               <Button 
-                onClick={() => setShowCourseModal(true)}
+                onClick={() => navigate('/explore')}
                 className="bg-purple-600 hover:bg-purple-700"
               >
-                <Plus className="w-4 h-4 mr-2" />
-                Create Your First Course
+                Explore Courses
               </Button>
             )}
           </div>
