@@ -389,7 +389,7 @@ Include Videos: ${formData.includeVideos}`;
               <div className={`p-4 rounded-lg border ${generationProgress >= 20 ? 'bg-green-600/20 border-green-500' : 'bg-slate-700 border-slate-600'}`}>
                 <div className="flex items-center gap-2 mb-2">
                   <div className={`w-3 h-3 rounded-full ${generationProgress >= 20 ? 'bg-green-400' : 'bg-gray-500'}`}></div>
-                  <span className="text-sm font-medium">Content Generation</span>
+                  <span className="text-sm font-medium text-white">Content Generation</span>
                 </div>
                 <p className="text-xs text-gray-300">Creating detailed HTML content for each topic</p>
               </div>
@@ -397,7 +397,7 @@ Include Videos: ${formData.includeVideos}`;
               <div className={`p-4 rounded-lg border ${generationProgress >= 60 ? 'bg-blue-600/20 border-blue-500' : 'bg-slate-700 border-slate-600'}`}>
                 <div className="flex items-center gap-2 mb-2">
                   <div className={`w-3 h-3 rounded-full ${generationProgress >= 60 ? 'bg-blue-400' : 'bg-gray-500'}`}></div>
-                  <span className="text-sm font-medium">Video Integration</span>
+                  <span className="text-sm font-medium text-white">Video Integration</span>
                 </div>
                 <p className="text-xs text-gray-300">Finding relevant YouTube videos for each topic</p>
               </div>
@@ -405,7 +405,7 @@ Include Videos: ${formData.includeVideos}`;
               <div className={`p-4 rounded-lg border ${generationProgress >= 90 ? 'bg-purple-600/20 border-purple-500' : 'bg-slate-700 border-slate-600'}`}>
                 <div className="flex items-center gap-2 mb-2">
                   <div className={`w-3 h-3 rounded-full ${generationProgress >= 90 ? 'bg-purple-400' : 'bg-gray-500'}`}></div>
-                  <span className="text-sm font-medium">Course Saving</span>
+                  <span className="text-sm font-medium text-white">Course Saving</span>
                 </div>
                 <p className="text-xs text-gray-300">Saving course to database</p>
               </div>
