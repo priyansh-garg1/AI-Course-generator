@@ -10,6 +10,7 @@ import { useToast } from "@/hooks/use-toast";
 import { getAllCourses, CourseData } from "@/services/api";
 import { formatDistanceToNow } from "date-fns";
 import DashboardLayout from "@/components/DashboardLayout";
+import { useNavigate } from "react-router-dom";
 
 interface Course extends CourseData {
   _id: string;
@@ -24,6 +25,7 @@ interface Course extends CourseData {
 }
 
 const Explore = () => {
+  const navigate = useNavigate();
   const [courses, setCourses] = useState<Course[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
@@ -36,7 +38,7 @@ const Explore = () => {
   const { toast } = useToast();
 
   const categories = [
-    'Technology', 'Programming', 'Business', 'Marketing', 'Design', 
+    'Technology', 'Programming', 'Business', 'Marketing', 'Design',
     'Health', 'Education', 'Science', 'Arts', 'Language'
   ];
 
@@ -194,7 +196,7 @@ const Explore = () => {
             <p className="text-gray-400 mb-6">
               Try adjusting your search terms or filters to find what you're looking for
             </p>
-            <Button 
+            <Button
               onClick={() => {
                 setSearchTerm("");
                 setStatusFilter("all");
@@ -259,10 +261,10 @@ const Explore = () => {
                         {typeof course.createdBy === 'string' ? 'Unknown Creator' : course.createdBy.name}
                       </span>
                     </div>
-                    
+
                     <div className="flex gap-2">
-                      <Button size="sm" variant="outline" className="flex-1 border-slate-600 text-gray-300 hover:bg-slate-700">
-                        <Eye className="w-4 h-4 mr-1" />
+                      <Button size="sm" className="flex-1 bg-blue-600 hover:bg-blue-700 text-white" onClick={() => navigate(`/preview/${course._id}`)}>
+                        <BookOpen className="w-4 h-4 mr-1" />
                         Preview
                       </Button>
                       <Button size="sm" className="flex-1 bg-purple-600 hover:bg-purple-700">
@@ -280,12 +282,12 @@ const Explore = () => {
                 <Pagination>
                   <PaginationContent>
                     <PaginationItem>
-                      <PaginationPrevious 
+                      <PaginationPrevious
                         onClick={() => handlePageChange(currentPage - 1)}
                         className={currentPage === 1 ? "pointer-events-none opacity-50" : "cursor-pointer"}
                       />
                     </PaginationItem>
-                    
+
                     {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
                       let pageNum;
                       if (totalPages <= 5) {
@@ -297,25 +299,24 @@ const Explore = () => {
                       } else {
                         pageNum = currentPage - 2 + i;
                       }
-                      
+
                       return (
                         <PaginationItem key={pageNum}>
                           <PaginationLink
                             onClick={() => handlePageChange(pageNum)}
-                            className={`cursor-pointer ${
-                              currentPage === pageNum 
-                                ? "bg-purple-600 text-white" 
+                            className={`cursor-pointer ${currentPage === pageNum
+                                ? "bg-purple-600 text-white"
                                 : "text-gray-300 hover:bg-slate-700"
-                            }`}
+                              }`}
                           >
                             {pageNum}
                           </PaginationLink>
                         </PaginationItem>
                       );
                     })}
-                    
+
                     <PaginationItem>
-                      <PaginationNext 
+                      <PaginationNext
                         onClick={() => handlePageChange(currentPage + 1)}
                         className={currentPage === totalPages ? "pointer-events-none opacity-50" : "cursor-pointer"}
                       />

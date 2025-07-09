@@ -14,6 +14,7 @@ import Profile from "./pages/Profile";
 import Billing from "./pages/Billing";
 import NotFound from "./pages/NotFound";
 import CourseView from "./pages/CourseView";
+import CoursePreview from "./pages/CoursePreview";
 
 const queryClient = new QueryClient();
 
@@ -52,6 +53,7 @@ const App = () => (
               </ProtectedRoute>
             } />
             <Route path="/course/:id" element={<CourseView />} />
+            <Route path="/preview/:id" element={<CoursePreview />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>

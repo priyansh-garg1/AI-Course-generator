@@ -211,11 +211,12 @@ export const getAllCourses = async (params?: {
 
 export const getCourseById = async (token: string, courseId: string): Promise<any> => {
   try {
-    const response = await api.get(`/courses/${courseId}`, {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    });
+    const headers: any = {};
+    if (token) {
+      headers.Authorization = `Bearer ${token}`;
+    }
+    
+    const response = await api.get(`/courses/${courseId}`, { headers });
     return response.data;
   } catch (error: any) {
     if (error.response?.data) {
