@@ -34,7 +34,7 @@ const Index = () => {
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900">
       {/* Navigation */}
       <nav className="container mx-auto px-6 py-4 flex justify-between items-center">
-        <div className="flex items-center space-x-2">
+        <div onClick={() => navigate('/')} className="flex items-center space-x-2">
           <Brain className="h-8 w-8 text-purple-400" />
           <span className="text-2xl font-bold text-white">CourseAI</span>
         </div>
@@ -74,14 +74,6 @@ const Index = () => {
             >
               Generate Your Course Now
               <ArrowRight className="ml-2 h-5 w-5" />
-            </Button>
-            <Button 
-              size="lg" 
-              variant="outline" 
-              className="border-purple-400 text-purple-400 hover:bg-purple-400 hover:text-white px-8 py-6 text-lg"
-            >
-              Watch Demo
-              <Video className="ml-2 h-5 w-5" />
             </Button>
           </div>
         </div>
@@ -215,7 +207,7 @@ const Index = () => {
       <footer className="border-t border-slate-800">
         <div className="container mx-auto px-6 py-8">
           <div className="flex flex-col md:flex-row justify-between items-center">
-            <div className="flex items-center space-x-2 mb-4 md:mb-0">
+            <div onClick={() => navigate('/')} className="flex items-center space-x-2 mb-4 md:mb-0 cursor-pointer">
               <Brain className="h-6 w-6 text-purple-400" />
               <span className="text-xl font-bold text-white">CourseAI</span>
             </div>

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { NavLink, useLocation } from "react-router-dom";
+import { NavLink, useLocation, useNavigate } from "react-router-dom";
 import { 
   Brain, 
   LayoutDashboard, 
@@ -20,6 +20,7 @@ interface DashboardLayoutProps {
 }
 
 const DashboardLayout = ({ children }: DashboardLayoutProps) => {
+  const navigate = useNavigate();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const location = useLocation();
   const { logout } = useAuth();
@@ -54,7 +55,7 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
         <div className="flex flex-col h-full">
           {/* Logo */}
           <div className="flex items-center justify-between p-6 border-b border-slate-700">
-            <div className="flex items-center space-x-2">
+            <div onClick={() => navigate('/')} className="flex items-center space-x-2 cursor-pointer">
               <Brain className="h-8 w-8 text-purple-400" />
               <span className="text-2xl font-bold text-white">CourseAI</span>
             </div>

@@ -324,7 +324,7 @@ export default function CoursePreview() {
               )}
               <Button 
                 variant="outline" 
-                onClick={() => navigate('/')}
+                onClick={() => navigate('/explore')}
                 className="border-slate-600 text-gray-300 px-8 py-3"
               >
                 Explore More Courses
