@@ -5,9 +5,10 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Pagination, PaginationContent, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from "@/components/ui/pagination";
-import { BookOpen, Clock, Users, Search, Filter, Star, Eye, Play, User } from "lucide-react";
+import { BookOpen, Clock, Users, Search, Filter, Star, Eye, Play, User, CheckCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { getAllCourses, CourseData } from "@/services/api";
+import { useAuth } from "@/contexts/AuthContext";
+import { getAllCourses, getUserEnrollments, enrollInCourse, CourseData } from "@/services/api";
 import { formatDistanceToNow } from "date-fns";
 import DashboardLayout from "@/components/DashboardLayout";
 import { useNavigate } from "react-router-dom";
@@ -24,9 +25,17 @@ interface Course extends CourseData {
   updatedAt: string;
 }
 
+interface EnrolledCourse {
+  _id: string;
+  courseId: string;
+  status: 'active' | 'completed' | 'paused';
+}
+
 const Explore = () => {
   const navigate = useNavigate();
   const [courses, setCourses] = useState<Course[]>([]);
+  const [enrolledCourseIds, setEnrolledCourseIds] = useState<string[]>([]);
+  const [filteredCourses, setFilteredCourses] = useState<Course[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
@@ -35,7 +44,9 @@ const Explore = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [totalItems, setTotalItems] = useState(0);
+  const [enrollingCourseId, setEnrollingCourseId] = useState<string | null>(null);
   const { toast } = useToast();
+  const { token } = useAuth();
 
   const categories = [
     'Technology', 'Programming', 'Business', 'Marketing', 'Design',
@@ -47,7 +58,14 @@ const Explore = () => {
 
   useEffect(() => {
     fetchCourses();
-  }, [currentPage, searchTerm, statusFilter, categoryFilter, difficultyFilter]);
+    if (token) {
+      fetchUserEnrollments();
+    }
+  }, [currentPage, searchTerm, statusFilter, categoryFilter, difficultyFilter, token]);
+
+  useEffect(() => {
+    filterCourses();
+  }, [courses, enrolledCourseIds, searchTerm, statusFilter, categoryFilter, difficultyFilter]);
 
   const fetchCourses = async () => {
     try {
@@ -76,6 +94,83 @@ const Explore = () => {
       });
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const fetchUserEnrollments = async () => {
+    if (!token) return;
+
+    try {
+      const response = await getUserEnrollments(token);
+      if (response.success) {
+        const enrolledIds = response.data.map((enrollment: EnrolledCourse) => enrollment.courseId);
+        setEnrolledCourseIds(enrolledIds);
+      }
+    } catch (error: any) {
+      console.error('Failed to fetch enrollments:', error);
+    }
+  };
+
+  const filterCourses = () => {
+    let filtered = courses;
+
+    // Filter out enrolled courses
+    filtered = filtered.filter(course => !enrolledCourseIds.includes(course._id));
+
+    // Apply other filters
+    if (searchTerm) {
+      filtered = filtered.filter(course =>
+        course.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        course.description.toLowerCase().includes(searchTerm.toLowerCase())
+      );
+    }
+
+    if (statusFilter !== "all") {
+      filtered = filtered.filter(course => course.status === statusFilter);
+    }
+
+    if (categoryFilter !== "all") {
+      filtered = filtered.filter(course => course.category === categoryFilter);
+    }
+
+    if (difficultyFilter !== "all") {
+      filtered = filtered.filter(course => course.difficulty === difficultyFilter);
+    }
+
+    setFilteredCourses(filtered);
+  };
+
+  const handleEnroll = async (courseId: string, courseName: string) => {
+    if (!token) {
+      toast({
+        title: "Authentication Required",
+        description: "Please log in to enroll in courses.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    setEnrollingCourseId(courseId);
+    try {
+      const response = await enrollInCourse(token, courseId);
+      if (response.success) {
+        toast({
+          title: "Successfully Enrolled!",
+          description: `You are now enrolled in ${courseName}`,
+        });
+        // Add to enrolled courses and refresh
+        setEnrolledCourseIds(prev => [...prev, courseId]);
+        // Navigate to the course
+        navigate(`/course/${courseId}`);
+      }
+    } catch (error: any) {
+      toast({
+        title: "Enrollment Failed",
+        description: error.message || "Failed to enroll in course. Please try again.",
+        variant: "destructive"
+      });
+    } finally {
+      setEnrollingCourseId(null);
     }
   };
 
@@ -127,7 +222,7 @@ const Explore = () => {
       <div className="container mx-auto px-4 py-8">
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-white mb-2">Explore Courses</h1>
-          <p className="text-gray-400">Discover AI-generated courses from creators around the world</p>
+          <p className="text-gray-400">Discover AI-generated courses you haven't enrolled in yet</p>
         </div>
 
         <div className="mb-6 space-y-4">
@@ -189,38 +284,53 @@ const Explore = () => {
           </form>
         </div>
 
-        {courses.length === 0 ? (
+        {filteredCourses.length === 0 ? (
           <div className="text-center py-12">
             <BookOpen className="h-16 w-16 text-gray-400 mx-auto mb-4" />
-            <h3 className="text-xl font-semibold text-white mb-2">No courses found</h3>
+            <h3 className="text-xl font-semibold text-white mb-2">
+              {courses.length === 0 ? "No courses found" : "No available courses to enroll in"}
+            </h3>
             <p className="text-gray-400 mb-6">
-              Try adjusting your search terms or filters to find what you're looking for
+              {courses.length === 0 
+                ? "Try adjusting your search terms or filters to find what you're looking for"
+                : "You've enrolled in all available courses or try adjusting your filters"
+              }
             </p>
-            <Button
-              onClick={() => {
-                setSearchTerm("");
-                setStatusFilter("all");
-                setCategoryFilter("all");
-                setDifficultyFilter("all");
-                setCurrentPage(1);
-              }}
-              variant="outline"
-              className="border-slate-600 text-gray-300"
-            >
-              Clear Filters
-            </Button>
+            <div className="flex gap-4 justify-center">
+              <Button
+                onClick={() => {
+                  setSearchTerm("");
+                  setStatusFilter("all");
+                  setCategoryFilter("all");
+                  setDifficultyFilter("all");
+                  setCurrentPage(1);
+                }}
+                variant="outline"
+                className="border-slate-600 text-gray-300"
+              >
+                Clear Filters
+              </Button>
+              {token && (
+                <Button
+                  onClick={() => navigate('/learning')}
+                  className="bg-purple-600 hover:bg-purple-700"
+                >
+                  View My Courses
+                </Button>
+              )}
+            </div>
           </div>
         ) : (
           <>
             <div className="mb-6">
               <p className="text-gray-400">
-                Showing {courses.length} of {totalItems} courses
+                Showing {filteredCourses.length} of {totalItems} available courses
                 {searchTerm && ` for "${searchTerm}"`}
               </p>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {courses.map((course) => (
+              {filteredCourses.map((course) => (
                 <Card key={course._id} className="bg-slate-800 border-slate-700 hover:border-slate-600 transition-colors">
                   <CardHeader className="pb-3">
                     <div className="flex items-start justify-between">
@@ -267,9 +377,23 @@ const Explore = () => {
                         <BookOpen className="w-4 h-4 mr-1" />
                         Preview
                       </Button>
-                      <Button size="sm" className="flex-1 bg-purple-600 hover:bg-purple-700">
-                        <Play className="w-4 h-4 mr-1" />
-                        Enroll
+                      <Button 
+                        size="sm" 
+                        className="flex-1 bg-purple-600 hover:bg-purple-700"
+                        onClick={() => handleEnroll(course._id, course.name)}
+                        disabled={enrollingCourseId === course._id}
+                      >
+                        {enrollingCourseId === course._id ? (
+                          <>
+                            <div className="w-4 h-4 mr-1 animate-spin border-2 border-white border-t-transparent rounded-full" />
+                            Enrolling...
+                          </>
+                        ) : (
+                          <>
+                            <Play className="w-4 h-4 mr-1" />
+                            Enroll
+                          </>
+                        )}
                       </Button>
                     </div>
                   </CardContent>

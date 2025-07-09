@@ -4,27 +4,48 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { BookOpen, Clock, Users, Search, Filter, Plus, Edit, Trash2, Eye, Play } from "lucide-react";
+import { BookOpen, Clock, Users, Search, Filter, Plus, Edit, Trash2, Eye, Play, CheckCircle, Target } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
-import { getCourses, deleteCourse, updateCourseStatus, CourseData } from "@/services/api";
+import { getUserEnrollments, unenrollFromCourse } from "@/services/api";
 import { formatDistanceToNow } from "date-fns";
 import DashboardLayout from "@/components/DashboardLayout";
 import CourseModal from "@/components/CourseModal";
 import placeholder from '@/../public/placeholder.svg';
 import { useNavigate } from 'react-router-dom';
 
-interface Course extends CourseData {
+interface EnrolledCourse {
   _id: string;
-  createdBy: string;
-  status: string;
-  createdAt: string;
-  updatedAt: string;
+  courseId: {
+    _id: string;
+    name: string;
+    description: string;
+    category: string;
+    difficulty: string;
+    chapters: number;
+    status: string;
+    createdAt: string;
+    updatedAt: string;
+  };
+  enrolledAt: string;
+  status: 'active' | 'completed' | 'paused';
+  progress: {
+    completedTopics: Array<{
+      chapterOrder: number;
+      topicIndex: number;
+      completedAt: string;
+    }>;
+    currentChapter: number;
+    currentTopic: number;
+    lastAccessedAt: string;
+    totalTopics?: number;
+    completionPercentage?: number;
+  };
 }
 
 const Learning = () => {
-  const [courses, setCourses] = useState<Course[]>([]);
-  const [filteredCourses, setFilteredCourses] = useState<Course[]>([]);
+  const [enrolledCourses, setEnrolledCourses] = useState<EnrolledCourse[]>([]);
+  const [filteredCourses, setFilteredCourses] = useState<EnrolledCourse[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
@@ -41,29 +62,29 @@ const Learning = () => {
   ];
 
   const difficulties = ['Beginner', 'Intermediate', 'Advanced'];
-  const statuses = ['draft', 'published', 'archived'];
+  const statuses = ['active', 'completed', 'paused'];
 
   useEffect(() => {
-    fetchCourses();
+    fetchEnrolledCourses();
   }, []);
 
   useEffect(() => {
     filterCourses();
-  }, [courses, searchTerm, statusFilter, categoryFilter, difficultyFilter]);
+  }, [enrolledCourses, searchTerm, statusFilter, categoryFilter, difficultyFilter]);
 
-  const fetchCourses = async () => {
+  const fetchEnrolledCourses = async () => {
     if (!token) return;
 
     try {
       setIsLoading(true);
-      const response = await getCourses(token);
+      const response = await getUserEnrollments(token);
       if (response.success) {
-        setCourses(response.data);
+        setEnrolledCourses(response.data);
       }
     } catch (error: any) {
       toast({
         title: "Error",
-        description: error.message || "Failed to fetch courses",
+        description: error.message || "Failed to fetch enrolled courses",
         variant: "destructive"
       });
     } finally {
@@ -72,12 +93,12 @@ const Learning = () => {
   };
 
   const filterCourses = () => {
-    let filtered = courses;
+    let filtered = enrolledCourses;
 
     if (searchTerm) {
       filtered = filtered.filter(course =>
-        course.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        course.description.toLowerCase().includes(searchTerm.toLowerCase())
+        course.courseId.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        course.courseId.description.toLowerCase().includes(searchTerm.toLowerCase())
       );
     }
 
@@ -86,65 +107,44 @@ const Learning = () => {
     }
 
     if (categoryFilter !== "all") {
-      filtered = filtered.filter(course => course.category === categoryFilter);
+      filtered = filtered.filter(course => course.courseId.category === categoryFilter);
     }
 
     if (difficultyFilter !== "all") {
-      filtered = filtered.filter(course => course.difficulty === difficultyFilter);
+      filtered = filtered.filter(course => course.courseId.difficulty === difficultyFilter);
     }
 
     setFilteredCourses(filtered);
   };
 
-  const handleDeleteCourse = async (courseId: string) => {
+  const handleUnenroll = async (enrollmentId: string, courseName: string) => {
     if (!token) return;
 
     try {
-      await deleteCourse(token, courseId);
-      setCourses(courses.filter(course => course._id !== courseId));
+      await unenrollFromCourse(token, enrollmentId);
+      setEnrolledCourses(enrolledCourses.filter(course => course._id !== enrollmentId));
       toast({
         title: "Success",
-        description: "Course deleted successfully",
+        description: `Unenrolled from ${courseName}`,
       });
     } catch (error: any) {
       toast({
         title: "Error",
-        description: error.message || "Failed to delete course",
-        variant: "destructive"
-      });
-    }
-  };
-
-  const handleStatusChange = async (courseId: string, newStatus: string) => {
-    if (!token) return;
-
-    try {
-      await updateCourseStatus(token, courseId, newStatus);
-      setCourses(courses.map(course =>
-        course._id === courseId ? { ...course, status: newStatus } : course
-      ));
-      toast({
-        title: "Success",
-        description: "Course status updated successfully",
-      });
-    } catch (error: any) {
-      toast({
-        title: "Error",
-        description: error.message || "Failed to update course status",
+        description: error.message || "Failed to unenroll from course",
         variant: "destructive"
       });
     }
   };
 
   const handleCourseCreated = () => {
-    fetchCourses();
+    fetchEnrolledCourses();
   };
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'published': return 'bg-green-600';
-      case 'draft': return 'bg-yellow-600';
-      case 'archived': return 'bg-gray-600';
+      case 'active': return 'bg-green-600';
+      case 'completed': return 'bg-blue-600';
+      case 'paused': return 'bg-yellow-600';
       default: return 'bg-gray-600';
     }
   };
@@ -158,6 +158,21 @@ const Learning = () => {
     }
   };
 
+  const calculateProgress = (enrollment: EnrolledCourse) => {
+    // Use the accurate progress data from the backend
+    if (enrollment.progress && typeof enrollment.progress.completionPercentage === 'number') {
+      return enrollment.progress.completionPercentage;
+    }
+    
+    // Fallback calculation if progress data is not available
+    const course = enrollment.courseId;
+    const estimatedTopicsPerChapter = 8;
+    const totalTopics = course.chapters * estimatedTopicsPerChapter;
+    const completedTopics = enrollment.progress.completedTopics.length;
+    
+    return totalTopics > 0 ? Math.min(Math.round((completedTopics / totalTopics) * 100), 100) : 0;
+  };
+
   if (isLoading) {
     return (
       <DashboardLayout>
@@ -165,7 +180,7 @@ const Learning = () => {
           <div className="flex items-center justify-center min-h-[400px]">
             <div className="text-center">
               <BookOpen className="h-12 w-12 text-purple-400 mx-auto mb-4 animate-pulse" />
-              <p className="text-gray-400">Loading your courses...</p>
+              <p className="text-gray-400">Loading your enrolled courses...</p>
             </div>
           </div>
         </div>
@@ -179,14 +194,14 @@ const Learning = () => {
       <div className="mb-8 flex justify-between items-start">
         <div>
           <h1 className="text-3xl font-bold text-white mb-2">My Learning</h1>
-          <p className="text-gray-400">Manage and track your AI-generated courses</p>
+          <p className="text-gray-400">Track your progress in enrolled courses</p>
         </div>
         <Button 
-          onClick={() => setIsCourseModalOpen(true)}
+          onClick={() => navigate('/explore')}
           className="bg-purple-600 hover:bg-purple-700"
         >
           <Plus className="w-4 h-4 mr-2" />
-          Create Course
+          Explore Courses
         </Button>
       </div>
 
@@ -195,7 +210,7 @@ const Learning = () => {
           <div className="flex-1 relative">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
             <Input
-              placeholder="Search courses..."
+              placeholder="Search enrolled courses..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="pl-10 bg-slate-800 border-slate-600 text-white"
@@ -249,95 +264,110 @@ const Learning = () => {
         <div className="text-center py-12">
           <BookOpen className="h-16 w-16 text-gray-400 mx-auto mb-4" />
           <h3 className="text-xl font-semibold text-white mb-2">
-            {courses.length === 0 ? "No courses yet" : "No courses match your filters"}
+            {enrolledCourses.length === 0 ? "No enrolled courses yet" : "No courses match your filters"}
           </h3>
           <p className="text-gray-400 mb-6">
-            {courses.length === 0 
-              ? "Create your first AI-generated course to get started"
+            {enrolledCourses.length === 0 
+              ? "Explore and enroll in courses to start your learning journey"
               : "Try adjusting your search or filters"
             }
           </p>
-                     {courses.length === 0 && (
-             <Button 
-               onClick={() => setIsCourseModalOpen(true)}
-               className="bg-purple-600 hover:bg-purple-700"
-             >
-               <Plus className="w-4 h-4 mr-2" />
-               Create Your First Course
-             </Button>
-           )}
+          {enrolledCourses.length === 0 && (
+            <Button 
+              onClick={() => navigate('/explore')}
+              className="bg-purple-600 hover:bg-purple-700"
+            >
+              <Plus className="w-4 h-4 mr-2" />
+              Explore Courses
+            </Button>
+          )}
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-          {filteredCourses.map((course) => (
-            <Card
-              key={course._id}
-              className="bg-slate-800 border border-slate-700 hover:border-slate-600 transition-all duration-300 rounded-2xl shadow-sm h-full flex flex-col"
-            >
-              <CardHeader className="pb-3">
-                <div className="flex items-start justify-between">
-                  <div className="flex-1">
-                    <CardTitle className="text-white text-lg line-clamp-2">
-                      {course.name}
-                    </CardTitle>
-                    <CardDescription className="text-gray-400 mt-2 line-clamp-2">
-                      {course.description}
-                    </CardDescription>
+          {filteredCourses.map((enrollment) => {
+            const course = enrollment.courseId;
+            const progress = calculateProgress(enrollment);
+            
+            return (
+              <Card
+                key={enrollment._id}
+                className="bg-slate-800 border border-slate-700 hover:border-slate-600 transition-all duration-300 rounded-2xl shadow-sm h-full flex flex-col"
+              >
+                <CardHeader className="pb-3">
+                  <div className="flex items-start justify-between">
+                    <div className="flex-1">
+                      <CardTitle className="text-white text-lg line-clamp-2">
+                        {course.name}
+                      </CardTitle>
+                      <CardDescription className="text-gray-400 mt-2 line-clamp-2">
+                        {course.description}
+                      </CardDescription>
+                    </div>
                   </div>
-                </div>
-                <div className="flex flex-wrap gap-2 mt-3">
-                  <Badge className={`${getStatusColor(course.status)} text-white capitalize`}>
-                    {course.status}
-                  </Badge>
-                  <Badge className={`${getDifficultyColor(course.difficulty)} text-white`}>
-                    {course.difficulty}
-                  </Badge>
-                  <Badge className="bg-blue-600 text-white">
-                    {course.category}
-                  </Badge>
-                </div>
-              </CardHeader>
-              <CardContent className="pt-0 flex flex-col flex-1 justify-between">
-                <div>
-                  <div className="flex items-center justify-between text-sm text-gray-400 mb-4">
-                    <div className="flex items-center">
+                  <div className="flex flex-wrap gap-2 mt-3">
+                    <Badge className={`${getStatusColor(enrollment.status)} text-white capitalize`}>
+                      {enrollment.status}
+                    </Badge>
+                    <Badge className={`${getDifficultyColor(course.difficulty)} text-white`}>
+                      {course.difficulty}
+                    </Badge>
+                    <Badge className="bg-blue-600 text-white">
+                      {course.category}
+                    </Badge>
+                  </div>
+                </CardHeader>
+                <CardContent className="pt-0 flex flex-col flex-1 justify-between">
+                  <div>
+                    <div className="flex items-center justify-between text-sm text-gray-400 mb-4">
+                      <div className="flex items-center">
+                        <BookOpen className="w-4 h-4 mr-1" />
+                        {course.chapters} chapters
+                      </div>
+                      <div className="flex items-center">
+                        <Clock className="w-4 h-4 mr-1" />
+                        {formatDistanceToNow(new Date(enrollment.enrolledAt), { addSuffix: true })}
+                      </div>
+                    </div>
+                    
+                    {/* Progress bar */}
+                    <div className="mb-4">
+                      <div className="flex justify-between text-sm text-gray-400 mb-1">
+                        <span>Progress</span>
+                        <span>{progress}%</span>
+                      </div>
+                      <div className="w-full bg-slate-700 rounded-full h-2">
+                        <div 
+                          className="bg-green-600 h-2 rounded-full transition-all duration-300" 
+                          style={{ width: `${progress}%` }} 
+                        />
+                      </div>
+                      <div className="text-xs text-gray-400 mt-1">
+                        {enrollment.progress.completedTopics.length} of {enrollment.progress.totalTopics || '?'} topics completed
+                      </div>
+                    </div>
+                  </div>
+                  <div className="flex gap-2 mt-auto pt-2">
+                    <Button size="sm" className="flex-1 bg-purple-600 hover:bg-purple-700 text-white" onClick={() => navigate(`/course/${course._id}`)}>
+                      <Eye className="w-4 h-4 mr-1" />
+                      Continue
+                    </Button>
+                    <Button size="sm" className="flex-1 bg-blue-600 hover:bg-blue-700 text-white" onClick={() => navigate(`/preview/${course._id}`)}>
                       <BookOpen className="w-4 h-4 mr-1" />
-                      {course.chapters} chapters
-                    </div>
-                    <div className="flex items-center">
-                      <Clock className="w-4 h-4 mr-1" />
-                      {formatDistanceToNow(new Date(course.createdAt), { addSuffix: true })}
-                    </div>
+                      Preview
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="border-slate-600 text-gray-300 hover:bg-slate-700"
+                      onClick={() => handleUnenroll(enrollment._id, course.name)}
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </Button>
                   </div>
-                  {/* Progress bar (static for now) */}
-                  <div className="mb-4">
-                    <div className="w-full bg-slate-700 rounded-full h-2">
-                      <div className="bg-purple-600 h-2 rounded-full" style={{ width: '40%' }} />
-                    </div>
-                    <div className="text-xs text-gray-400 mt-1">Progress: 40%</div>
-                  </div>
-                </div>
-                <div className="flex gap-2 mt-auto pt-2">
-                  <Button size="sm" className="flex-1 bg-purple-600 hover:bg-purple-700 text-white" onClick={() => navigate(`/course/${course._id}`)}>
-                    <Eye className="w-4 h-4 mr-1" />
-                    View
-                  </Button>
-                  <Button size="sm" className="flex-1 bg-slate-700 hover:bg-slate-600 text-white">
-                    <Play className="w-4 h-4 mr-1" />
-                    Start
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    className="border-slate-600 text-gray-300 hover:bg-slate-700"
-                    onClick={() => handleDeleteCourse(course._id)}
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
+                </CardContent>
+              </Card>
+            );
+          })}
         </div>
        )}
 
