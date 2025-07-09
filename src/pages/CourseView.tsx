@@ -27,6 +27,7 @@ export default function CourseView() {
   const [enrollment, setEnrollment] = useState<any>(null);
   const [enrolling, setEnrolling] = useState(false);
   const [progress, setProgress] = useState<any>(null);
+  const [completingTopic, setCompletingTopic] = useState<string | null>(null);
   const { toast } = useToast();
   const { user, token } = useAuth();
 
@@ -104,15 +105,16 @@ export default function CourseView() {
   };
 
   const handleNextTopic = async () => {
+    // Mark current topic as completed before moving to next
+    if (token && enrollment) {
+      await markTopicAsCompleted(currentChapter.order, activeTopic);
+    }
+
     if (activeTopic < currentChapter.topics.length - 1) {
-      const nextTopic = activeTopic + 1;
-      setActiveTopic(nextTopic);
-      await markTopicAsCompleted(activeChapter, nextTopic);
+      setActiveTopic(activeTopic + 1);
     } else if (activeChapter < chapterGroups.length - 1) {
-      const nextChapter = activeChapter + 1;
-      setActiveChapter(nextChapter);
+      setActiveChapter(activeChapter + 1);
       setActiveTopic(0);
-      await markTopicAsCompleted(nextChapter, 0);
     }
   };
 
@@ -125,16 +127,51 @@ export default function CourseView() {
     }
   };
 
+  const handleTopicClick = async (chapterOrder: number, topicIndex: number) => {
+    // Mark the previous topic as completed if user is enrolled
+    if (token && enrollment && activeChapter !== undefined && activeTopic !== undefined) {
+      await markTopicAsCompleted(currentChapter.order, activeTopic);
+    }
+    
+    // Find the chapter index and topic index
+    const chapterIndex = chapterGroups.findIndex(ch => ch.order === chapterOrder);
+    if (chapterIndex !== -1) {
+      setActiveChapter(chapterIndex);
+      setActiveTopic(topicIndex);
+    }
+  };
+
   const markTopicAsCompleted = async (chapterOrder: number, topicIndex: number) => {
     if (!token || !enrollment) return;
+
+    const topicKey = `${chapterOrder}-${topicIndex}`;
+    setCompletingTopic(topicKey);
 
     try {
       const response = await markTopicCompleted(token, id!, chapterOrder, topicIndex);
       if (response.success) {
         setProgress(response.data.progress);
+        // Update the enrollment state with new progress
+        setEnrollment(prev => ({
+          ...prev,
+          progress: response.data.enrollment.progress
+        }));
+        
+        // Show success feedback
+        toast({
+          title: "Topic Completed!",
+          description: "Great job! You've completed this topic.",
+        });
       }
     } catch (error) {
       console.error('Failed to mark topic as completed:', error);
+      toast({
+        title: "Error",
+        description: "Failed to mark topic as completed. Please try again.",
+        variant: "destructive"
+      });
+    } finally {
+      setCompletingTopic(null);
     }
   };
 
@@ -320,7 +357,7 @@ export default function CourseView() {
                                   ? 'bg-purple-600/20 text-purple-300 border border-purple-500/50' 
                                   : 'bg-slate-700/50 text-gray-300 hover:bg-slate-600/50 hover:text-gray-200 border border-transparent'
                               }`}
-                              onClick={() => setActiveTopic(topicIdx)}
+                              onClick={() => handleTopicClick(chapterGroup.order, topicIdx)}
                             >
                               <div className="flex items-start gap-2">
                                 <div className={`w-2 h-2 rounded-full mt-1.5 flex-shrink-0 ${
@@ -335,6 +372,9 @@ export default function CourseView() {
                                 </div>
                                 {isTopicCompleted(chapterGroup.order, topicIdx) && (
                                   <CheckCircle className="w-4 h-4 text-green-400 flex-shrink-0" />
+                                )}
+                                {completingTopic === `${chapterGroup.order}-${topicIdx}` && (
+                                  <Loader2 className="w-4 h-4 text-purple-400 flex-shrink-0 animate-spin" />
                                 )}
                               </div>
                             </div>
@@ -370,6 +410,12 @@ export default function CourseView() {
                         <div className="flex items-center gap-1 text-green-400">
                           <CheckCircle className="w-4 h-4" />
                           <span>Completed</span>
+                        </div>
+                      )}
+                      {completingTopic === `${currentChapter?.order}-${activeTopic}` && (
+                        <div className="flex items-center gap-1 text-purple-400">
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                          <span>Marking as completed...</span>
                         </div>
                       )}
                     </div>
