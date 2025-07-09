@@ -39,7 +39,7 @@ const Index = () => {
           <span className="text-2xl font-bold text-white">CourseAI</span>
         </div>
         <div className="flex items-center space-x-4">
-          <Button variant="ghost" className="text-white hover:text-purple-300" onClick={handleLogin}>
+          <Button variant="ghost" className="text-white hover:text-gray-900 hover:bg-pink-100" onClick={handleLogin}>
             Login
           </Button>
           <Button className="bg-purple-600 hover:bg-purple-700 text-white" onClick={handleGetStarted}>
@@ -53,7 +53,7 @@ const Index = () => {
         <div className="max-w-4xl mx-auto">
           <Badge className="mb-6 bg-purple-100 text-purple-800 hover:bg-purple-200">
             <Sparkles className="w-4 h-4 mr-1" />
-            Powered by Google Gemini AI
+            Powered by AI
           </Badge>
           <h1 className="text-5xl md:text-7xl font-bold text-white mb-6">
             Generate Complete
@@ -211,7 +211,7 @@ const Index = () => {
               <Brain className="h-6 w-6 text-purple-400" />
               <span className="text-xl font-bold text-white">CourseAI</span>
             </div>
-            <p className="text-gray-400">© 2024 CourseAI. Powered by Google Gemini AI.</p>
+            <p className="text-gray-400">© 2024 CourseAI. Powered by AI.</p>
           </div>
         </div>
       </footer>

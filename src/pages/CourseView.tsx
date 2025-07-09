@@ -28,6 +28,7 @@ export default function CourseView() {
   const [enrolling, setEnrolling] = useState(false);
   const [progress, setProgress] = useState<any>(null);
   const [completingTopic, setCompletingTopic] = useState<string | null>(null);
+  const [completedTopics, setCompletedTopics] = useState<Set<string>>(new Set());
   const { toast } = useToast();
   const { user, token } = useAuth();
 
@@ -52,11 +53,18 @@ export default function CourseView() {
     async function checkEnrollment() {
       if (token && id) {
         try {
-          const response = await getEnrollmentDetails(token, id);
-          setEnrollment(response.data.enrollment);
-          setProgress(response.data.progress);
+                  const response = await getEnrollmentDetails(token, id);
+        setEnrollment(response.data.enrollment);
+        setProgress(response.data.progress);
+        if (response.data.enrollment?.progress?.completedTopics) {
+          const completedSet = new Set<string>(
+            response.data.enrollment.progress.completedTopics.map((topic: any) => 
+              `${topic.chapterOrder}-${topic.topicIndex}`
+            )
+          );
+          setCompletedTopics(completedSet);
+        }
         } catch (err) {
-          // User is not enrolled
           setEnrollment(null);
           setProgress(null);
         }
@@ -65,7 +73,6 @@ export default function CourseView() {
     checkEnrollment();
   }, [token, id]);
 
-  // Reset active topic when chapter changes
   useEffect(() => {
     setActiveTopic(0);
   }, [activeChapter]);
@@ -89,7 +96,6 @@ export default function CourseView() {
           description: "You can now track your progress.",
         });
         setEnrollment(response.data);
-        // Refresh enrollment details to get progress
         const enrollmentResponse = await getEnrollmentDetails(token, id);
         setProgress(enrollmentResponse.data.progress);
       }
@@ -105,9 +111,14 @@ export default function CourseView() {
   };
 
   const handleNextTopic = async () => {
-    // Mark current topic as completed before moving to next
     if (token && enrollment) {
-      await markTopicAsCompleted(currentChapter.order, activeTopic);
+      try {
+        await markTopicAsCompleted(currentChapter.order, activeTopic);
+        await new Promise(resolve => setTimeout(resolve, 100));
+      } catch (error) {
+        console.error('Failed to mark topic as completed:', error);
+        return;
+      }
     }
 
     if (activeTopic < currentChapter.topics.length - 1) {
@@ -128,12 +139,10 @@ export default function CourseView() {
   };
 
   const handleTopicClick = async (chapterOrder: number, topicIndex: number) => {
-    // Mark the previous topic as completed if user is enrolled
     if (token && enrollment && activeChapter !== undefined && activeTopic !== undefined) {
       await markTopicAsCompleted(currentChapter.order, activeTopic);
     }
     
-    // Find the chapter index and topic index
     const chapterIndex = chapterGroups.findIndex(ch => ch.order === chapterOrder);
     if (chapterIndex !== -1) {
       setActiveChapter(chapterIndex);
@@ -150,18 +159,21 @@ export default function CourseView() {
     try {
       const response = await markTopicCompleted(token, id!, chapterOrder, topicIndex);
       if (response.success) {
+        // Update progress state
         setProgress(response.data.progress);
+        
         // Update the enrollment state with new progress
         setEnrollment(prev => ({
           ...prev,
           progress: response.data.enrollment.progress
         }));
         
-        // Show success feedback
-        toast({
-          title: "Topic Completed!",
-          description: "Great job! You've completed this topic.",
-        });
+        // Add to completed topics set for immediate UI feedback
+        const topicKey = `${chapterOrder}-${topicIndex}`;
+        setCompletedTopics(prev => new Set([...prev, topicKey]));
+        
+        // Force a re-render by updating the enrollment state
+        setEnrollment(prev => ({ ...prev }));
       }
     } catch (error) {
       console.error('Failed to mark topic as completed:', error);
@@ -170,6 +182,7 @@ export default function CourseView() {
         description: "Failed to mark topic as completed. Please try again.",
         variant: "destructive"
       });
+      throw error; // Re-throw to be caught by calling function
     } finally {
       setCompletingTopic(null);
     }
@@ -177,6 +190,11 @@ export default function CourseView() {
 
   const isTopicCompleted = (chapterOrder: number, topicIndex: number) => {
     if (!enrollment) return false;
+    
+    const topicKey = `${chapterOrder}-${topicIndex}`;
+    
+    if (completedTopics.has(topicKey)) return true;
+    
     return enrollment.progress.completedTopics.some((topic: any) => 
       topic.chapterOrder === chapterOrder && topic.topicIndex === topicIndex
     );
@@ -208,7 +226,6 @@ export default function CourseView() {
 
   const chapters: Chapter[] = course.generatedChapters || [];
 
-  // Group chapters by their order/title
   const groupedChapters = chapters.reduce((acc, chapter) => {
     const key = chapter.order;
     if (!acc[key]) {
@@ -244,9 +261,6 @@ export default function CourseView() {
       <div className="container mx-auto px-4 py-8">
         {/* Header */}
         <div className="mb-8">
-          <Button onClick={() => navigate(-1)} variant="outline" className="mb-4 border-slate-600 text-gray-300">
-            <ArrowLeft className="w-4 h-4 mr-2" /> Back to Courses
-          </Button>
           
           {/* Course Overview */}
           <Card className="bg-slate-800 border border-slate-700 rounded-2xl shadow-md mb-6">
@@ -355,7 +369,9 @@ export default function CourseView() {
                               className={`p-2 rounded-md cursor-pointer transition-all duration-200 ${
                                 activeTopic === topicIdx 
                                   ? 'bg-purple-600/20 text-purple-300 border border-purple-500/50' 
-                                  : 'bg-slate-700/50 text-gray-300 hover:bg-slate-600/50 hover:text-gray-200 border border-transparent'
+                                  : isTopicCompleted(chapterGroup.order, topicIdx)
+                                    ? 'bg-green-600/20 text-green-300 border border-green-500/50'
+                                    : 'bg-slate-700/50 text-gray-300 hover:bg-slate-600/50 hover:text-gray-200 border border-transparent'
                               }`}
                               onClick={() => handleTopicClick(chapterGroup.order, topicIdx)}
                             >

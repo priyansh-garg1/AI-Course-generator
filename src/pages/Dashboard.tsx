@@ -1,11 +1,12 @@
 
 import { useState, useEffect } from "react";
-import { Plus, BookOpen, Users, CreditCard, User, Search, Filter, MoreVertical, LogOut, Eye, Edit, Trash2, Loader2, Calendar, Target } from "lucide-react";
+import { Plus, BookOpen, Users, CreditCard, User, Search, Filter, MoreVertical, LogOut, Eye, Edit, Trash2, Loader2, Calendar, Target, Share2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import DashboardLayout from "@/components/DashboardLayout";
 import CourseModal from "@/components/CourseModal";
@@ -41,6 +42,8 @@ const Dashboard = () => {
   const [categoryFilter, setCategoryFilter] = useState("all");
   const [difficultyFilter, setDifficultyFilter] = useState("all");
   const [deletingCourseId, setDeletingCourseId] = useState<string | null>(null);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [courseToDelete, setCourseToDelete] = useState<{ id: string; name: string } | null>(null);
   const { user, token } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
@@ -129,22 +132,25 @@ const Dashboard = () => {
     }
   };
 
-  const handleDeleteCourse = async (courseId: string, courseName: string) => {
-    if (!token) return;
+  const handleDeleteCourse = (courseId: string, courseName: string) => {
+    setCourseToDelete({ id: courseId, name: courseName });
+    setShowDeleteModal(true);
+  };
 
-    if (!confirm(`Are you sure you want to delete "${courseName}"? This action cannot be undone.`)) {
-      return;
-    }
+  const confirmDelete = async () => {
+    if (!token || !courseToDelete) return;
 
-    setDeletingCourseId(courseId);
+    setDeletingCourseId(courseToDelete.id);
     try {
-      const response = await deleteCourse(token, courseId);
+      const response = await deleteCourse(token, courseToDelete.id);
       if (response.success) {
-        setCourses(courses.filter(course => course._id !== courseId));
+        setCourses(courses.filter(course => course._id !== courseToDelete.id));
         toast({
           title: "Course Deleted",
-          description: `"${courseName}" has been deleted successfully`,
+          description: `"${courseToDelete.name}" has been deleted successfully`,
         });
+        setShowDeleteModal(false);
+        setCourseToDelete(null);
       }
     } catch (error: any) {
       toast({
@@ -157,8 +163,47 @@ const Dashboard = () => {
     }
   };
 
+  const cancelDelete = () => {
+    setShowDeleteModal(false);
+    setCourseToDelete(null);
+  };
+
   const handleCourseCreated = () => {
     fetchCourses();
+  };
+
+  const handleShareCourse = async (courseId: string, courseName: string) => {
+    const courseUrl = `${window.location.origin}/course/${courseId}`;
+    try {
+      if (navigator.share) {
+        await navigator.share({
+          title: courseName,
+          text: `Check out this course: ${courseName}`,
+          url: courseUrl,
+        });
+      } else {
+        await navigator.clipboard.writeText(courseUrl);
+        toast({
+          title: "Link Copied!",
+          description: "Course link has been copied to clipboard",
+        });
+      }
+    } catch (error) {
+      console.error('Error sharing course:', error);
+      try {
+        await navigator.clipboard.writeText(courseUrl);
+        toast({
+          title: "Link Copied!",
+          description: "Course link has been copied to clipboard",
+        });
+      } catch (clipboardError) {
+        toast({
+          title: "Error",
+          description: "Failed to copy link. Please try again.",
+          variant: "destructive"
+        });
+      }
+    }
   };
 
   const getStatusColor = (status: string) => {
@@ -360,23 +405,7 @@ const Dashboard = () => {
                       <Button 
                         variant="ghost" 
                         size="sm" 
-                        className="text-gray-400 hover:text-white"
-                        onClick={() => navigate(`/course/${course._id}`)}
-                      >
-                        <Eye className="w-4 h-4" />
-                      </Button>
-                      <Button 
-                        variant="ghost" 
-                        size="sm" 
-                        className="text-gray-400 hover:text-white"
-                        onClick={() => navigate(`/course/${course._id}/edit`)}
-                      >
-                        <Edit className="w-4 h-4" />
-                      </Button>
-                      <Button 
-                        variant="ghost" 
-                        size="sm" 
-                        className="text-red-400 hover:text-red-300"
+                        className="text-red-400 hover:text-red-300 hover:bg-red-600/10"
                         onClick={() => handleDeleteCourse(course._id, course.name)}
                         disabled={deletingCourseId === course._id}
                       >
@@ -425,20 +454,21 @@ const Dashboard = () => {
                   <div className="flex gap-2">
                     <Button 
                       size="sm" 
-                      className="bg-purple-600 hover:bg-purple-700 flex-1"
-                      onClick={() => navigate(`/course/${course._id}/edit`)}
-                    >
-                      <Edit className="w-3 h-3 mr-1" />
-                      Edit
-                    </Button>
-                    <Button 
-                      size="sm" 
                       variant="outline" 
                       className="border-slate-600 text-gray-300"
                       onClick={() => navigate(`/course/${course._id}`)}
                     >
                       <Eye className="w-3 h-3 mr-1" />
                       View
+                    </Button>
+                    <Button 
+                      size="sm" 
+                      variant="outline" 
+                      className="border-blue-600 text-blue-300 hover:bg-blue-600/10"
+                      onClick={() => handleShareCourse(course._id, course.name)}
+                    >
+                      <Share2 className="w-3 h-3 mr-1" />
+                      Share
                     </Button>
                   </div>
                 </CardContent>
@@ -453,6 +483,42 @@ const Dashboard = () => {
         onClose={() => setShowCourseModal(false)}
         onCourseCreated={handleCourseCreated}
       />
+
+      {/* Delete Confirmation Modal */}
+      <Dialog open={showDeleteModal} onOpenChange={setShowDeleteModal}>
+        <DialogContent className="bg-slate-900 border-slate-700">
+          <DialogHeader>
+            <DialogTitle className="text-white text-xl">Delete Course</DialogTitle>
+            <DialogDescription className="text-gray-300">
+              Are you sure you want to delete <span className="font-semibold text-white">"{courseToDelete?.name}"</span>? 
+              This action cannot be undone and all course content will be permanently removed.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="flex gap-3">
+            <Button 
+              variant="outline" 
+              onClick={cancelDelete}
+              className="border-slate-600 text-gray-300 hover:bg-slate-700"
+            >
+              Cancel
+            </Button>
+            <Button 
+              onClick={confirmDelete}
+              disabled={deletingCourseId === courseToDelete?.id}
+              className="bg-red-600 hover:bg-red-700 text-white"
+            >
+              {deletingCourseId === courseToDelete?.id ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Deleting...
+                </>
+              ) : (
+                'Delete Course'
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </DashboardLayout>
   );
 };

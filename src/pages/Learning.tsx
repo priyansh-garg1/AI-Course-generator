@@ -117,25 +117,6 @@ const Learning = () => {
     setFilteredCourses(filtered);
   };
 
-  const handleUnenroll = async (enrollmentId: string, courseName: string) => {
-    if (!token) return;
-
-    try {
-      await unenrollFromCourse(token, enrollmentId);
-      setEnrolledCourses(enrolledCourses.filter(course => course._id !== enrollmentId));
-      toast({
-        title: "Success",
-        description: `Unenrolled from ${courseName}`,
-      });
-    } catch (error: any) {
-      toast({
-        title: "Error",
-        description: error.message || "Failed to unenroll from course",
-        variant: "destructive"
-      });
-    }
-  };
-
   const handleCourseCreated = () => {
     fetchEnrolledCourses();
   };
@@ -354,14 +335,6 @@ const Learning = () => {
                     <Button size="sm" className="flex-1 bg-blue-600 hover:bg-blue-700 text-white" onClick={() => navigate(`/preview/${course._id}`)}>
                       <BookOpen className="w-4 h-4 mr-1" />
                       Preview
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      className="border-slate-600 text-gray-300 hover:bg-slate-700"
-                      onClick={() => handleUnenroll(enrollment._id, course.name)}
-                    >
-                      <Trash2 className="w-4 h-4" />
                     </Button>
                   </div>
                 </CardContent>

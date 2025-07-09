@@ -415,7 +415,7 @@ Include Videos: ${formData.includeVideos}`;
             <div className="bg-slate-800/50 rounded-lg p-4 border border-slate-600">
               <div className="flex items-center justify-center gap-2 text-sm text-gray-300">
                 <div className="w-2 h-2 bg-purple-400 rounded-full animate-pulse"></div>
-                <span>
+                <span className="text-white">
                   {generationProgress < 20 && "Initializing content generation..."}
                   {generationProgress >= 20 && generationProgress < 60 && "Generating detailed content with examples and exercises..."}
                   {generationProgress >= 60 && generationProgress < 90 && "Finding and integrating relevant videos..."}
